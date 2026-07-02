@@ -1,0 +1,27 @@
+{
+  "name": "gokulab-survey-nps",
+  "version": "1.0.0",
+  "description": "Encuesta de satisfacción y NPS para GokuLab",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GokulabAlgorithmics/gokulab-survey-nps.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GokulabAlgorithmics/gokulab-survey-nps/issues"
+  },
+  "homepage": "https://github.com/GokulabAlgorithmics/gokulab-survey-nps#readme",
+  "devDependencies": {
+    "wrangler": "^4.107.0"
+  },
+  "dependencies": {
+    "mongodb": "^7.4.0"
+  }
+}

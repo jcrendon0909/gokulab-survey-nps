@@ -1,83 +1,193 @@
-/* Navegación */
-.nav {
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  padding: 1rem 0;
-  border-bottom: 2px solid #e67e22;
+/* frontend/src/App.css */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f5f7fb;
+  color: #333;
+}
+
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.header {
+  text-align: center;
   margin-bottom: 2rem;
 }
 
-.nav a {
-  color: #2c3e50;
-  text-decoration: none;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: background 0.3s, color 0.3s;
+.header h1 {
+  color: #e67e22;
+  font-size: 2rem;
 }
 
-.nav a:hover {
+.header p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.survey-form {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+.form-section {
+  margin-bottom: 2.5rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1.5rem;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.form-section h2 {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  margin-bottom: 1.2rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #444;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #e67e22;
+  outline: none;
+}
+
+.nps-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.nps-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+.nps-option input {
+  display: none;
+}
+
+.nps-option span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ecf0f1;
+  color: #2c3e50;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.nps-option input:checked + span {
   background: #e67e22;
   color: white;
 }
 
-/* Dashboard */
-.dashboard {
-  max-width: 900px;
-  margin: 0 auto;
+.rating-group {
+  margin-bottom: 1.2rem;
 }
 
-.dashboard h1 {
-  color: #2c3e50;
-  text-align: center;
-}
-
-.dashboard p {
-  text-align: center;
-  color: #555;
-}
-
-.nps-card {
-  border: 4px solid #ccc;
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin: 1.5rem 0;
-  background: white;
-  text-align: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-}
-
-.nps-card h2 {
-  margin-bottom: 0.5rem;
-}
-
-.nps-score {
-  font-size: 4rem;
-  font-weight: 800;
-}
-
-.nps-details {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 1rem;
+.rating-group label {
+  display: block;
   font-weight: 500;
+  margin-bottom: 0.3rem;
 }
 
-.chart-container {
-  background: white;
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin: 1.5rem 0;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+.stars {
+  display: flex;
+  gap: 0.3rem;
 }
 
-.chart-container h3 {
+.star {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #ddd;
+  transition: 0.2s;
+  padding: 0 4px;
+}
+
+.star.active {
+  color: #f1c40f;
+}
+
+.star:hover {
+  transform: scale(1.2);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 1rem;
+  background: #e67e22;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.submit-btn:hover {
+  background: #d35400;
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.success-container {
   text-align: center;
-  margin-bottom: 1rem;
+  padding: 4rem 2rem;
 }
 
-.dashboard-loading, .dashboard-empty {
-  text-align: center;
-  padding: 3rem 0;
+.success-container h2 {
+  color: #27ae60;
+  font-size: 2.2rem;
+}
+
+.success-container p {
+  color: #555;
+  font-size: 1.2rem;
+  margin-top: 1rem;
 }

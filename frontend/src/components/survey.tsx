@@ -3,7 +3,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import '../App.css';
 
-function App() {
+function Survey() {
   const [formData, setFormData] = useState({
     studentName: '',
     studentAgeRange: '',
@@ -107,7 +107,7 @@ function App() {
             transition={{ type: "spring", stiffness: 400 }}
           />
           <div className="header-text">
-            <h1>GŌKULAB</h1>
+            <h1>GŌKU LAB</h1>
             <p>Encuesta de Satisfacción</p>
             <motion.span 
               className="subtitle"
@@ -232,11 +232,11 @@ function App() {
                   <motion.button
                     key={star}
                     type="button"
-                    className={`star ${formData[name as keyof typeof formData] >= star ? 'active' : ''}`}
+                    className={`star ${Number(formData[name as keyof typeof formData]) >= star ? 'active' : ''}`}
                     onClick={() => handleStarClick(name, star)}
                     whileHover={{ scale: 1.3, rotate: 15 }}
                     whileTap={{ scale: 0.7 }}
-                    animate={formData[name as keyof typeof formData] >= star ? { 
+                    animate={Number(formData[name as keyof typeof formData]) >= star ? { 
                       scale: [1, 1.2, 1],
                       rotate: [0, 20, -20, 0]
                     } : { scale: 1, rotate: 0 }}
@@ -270,11 +270,11 @@ function App() {
                   <motion.button
                     key={star}
                     type="button"
-                    className={`star ${formData[name as keyof typeof formData] >= star ? 'active' : ''}`}
+                    className={`star ${Number(formData[name as keyof typeof formData]) >= star ? 'active' : ''}`}
                     onClick={() => handleStarClick(name, star)}
                     whileHover={{ scale: 1.3, rotate: 15 }}
                     whileTap={{ scale: 0.7 }}
-                    animate={formData[name as keyof typeof formData] >= star ? { 
+                    animate={Number(formData[name as keyof typeof formData]) >= star ? { 
                       scale: [1, 1.2, 1],
                       rotate: [0, 20, -20, 0]
                     } : { scale: 1, rotate: 0 }}
@@ -308,11 +308,11 @@ function App() {
                   <motion.button
                     key={star}
                     type="button"
-                    className={`star ${formData[name as keyof typeof formData] >= star ? 'active' : ''}`}
+                    className={`star ${Number(formData[name as keyof typeof formData]) >= star ? 'active' : ''}`}
                     onClick={() => handleStarClick(name, star)}
                     whileHover={{ scale: 1.3, rotate: 15 }}
                     whileTap={{ scale: 0.7 }}
-                    animate={formData[name as keyof typeof formData] >= star ? { 
+                    animate={Number(formData[name as keyof typeof formData]) >= star ? { 
                       scale: [1, 1.2, 1],
                       rotate: [0, 20, -20, 0]
                     } : { scale: 1, rotate: 0 }}
@@ -367,4 +367,4 @@ function App() {
   );
 }
 
-export default App;
+export default Survey;

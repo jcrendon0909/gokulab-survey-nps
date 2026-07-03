@@ -22,6 +22,10 @@
     "wrangler": "^4.107.0"
   },
   "dependencies": {
-    "mongodb": "^7.4.0"
+    "axios": "^1.18.1",
+    "chart.js": "^4.5.1",
+    "framer-motion": "^12.42.2",
+    "mongodb": "^7.4.0",
+    "react-chartjs-2": "^5.3.1"
   }
 }

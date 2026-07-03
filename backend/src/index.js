@@ -1,18 +1,32 @@
 console.log('🔥 Iniciando index.js (CommonJS)...');
 
+console.log('1. Cargando express...');
 const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const connectDB = require('../config/db');
-const surveyRoutes = require('./routes/surveyRoutes');
+console.log('✅ Express cargado');
 
+console.log('2. Cargando cors...');
+const cors = require('cors');
+console.log('✅ Cors cargado');
+
+console.log('3. Cargando dotenv...');
+const dotenv = require('dotenv');
+console.log('✅ Dotenv cargado');
+
+console.log('4. Cargando connectDB desde ../config/db...');
+const connectDB = require('../config/db');
+console.log('✅ connectDB cargado');
+
+console.log('5. Cargando surveyRoutes desde ./routes/surveyRoutes...');
+const surveyRoutes = require('./routes/surveyRoutes');
+console.log('✅ surveyRoutes cargado');
+
+console.log('6. Configurando variables de entorno...');
+dotenv.config();
+console.log('✅ Variables cargadas');
+
+console.log('7. Conectando a MongoDB...');
 (async () => {
   try {
-    console.log('📦 Cargando variables de entorno...');
-    dotenv.config();
-    console.log('✅ Variables cargadas');
-
-    console.log('🔄 Conectando a MongoDB...');
     await connectDB();
     console.log('✅ Conectado a MongoDB');
 

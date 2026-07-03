@@ -1,4 +1,16 @@
+# Dependencias
 node_modules/
-dist/
 .dev.vars
+# Archivos de entorno
 .env
+.env.local
+.env.*.local
+# Archivos de build
+dist/
+build/
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+# Logs
+*.log
+npm-debug.log*

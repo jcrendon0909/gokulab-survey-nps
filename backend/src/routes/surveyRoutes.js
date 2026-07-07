@@ -1,7 +1,6 @@
 const express = require('express');
 const Survey = require('../models/SurveyResponse');
 
-// ✅ DEFINICIÓN DEL ROUTER (ESTO ES LO QUE FALTABA)
 const router = express.Router();
 
 // POST /api/survey - Guardar encuesta
@@ -112,10 +111,11 @@ router.get('/survey/stats', async (req, res) => {
     console.error('Error en stats:', error);
     res.status(500).json({ error: error.message });
   }
-  // GET /api/survey/comments - Obtener todos los comentarios de texto libre
+});
+
+// ✅ ENDPOINT CORRECTO: GET /api/survey/comments (ESTÁ FUERA DEL BLOQUE ANTERIOR)
 router.get('/survey/comments', async (req, res) => {
   try {
-    // Solo seleccionamos los campos de texto, excluimos el resto para optimizar
     const responses = await Survey.find({}, 'likes improvements additionalComments');
     res.json({ comments: responses });
   } catch (error) {
@@ -124,5 +124,4 @@ router.get('/survey/comments', async (req, res) => {
   }
 });
 
-// ✅ EXPORTAR EL ROUTER
-module.exports = router; 
+module.exports = router;

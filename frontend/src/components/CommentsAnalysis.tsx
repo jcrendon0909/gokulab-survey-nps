@@ -76,12 +76,20 @@ const CommentsAnalysis: React.FC = () => {
     return Object.entries(freq)
       .map(([text, value]) => ({ text, value }))
       .sort((a, b) => b.value - a.value)
+<<<<<<< HEAD
       .slice(0, 15); // Mostrar las 15 más frecuentes
   };
 
   // Configuración de los gráficos
   const chartOptions = {
     indexAxis: 'y' as const, // Barras horizontales
+=======
+      .slice(0, 15);
+  };
+
+  const chartOptions = {
+    indexAxis: 'y' as const,
+>>>>>>> 1fcb832c7e9d5808654ce9527a59b4122f69950b
     responsive: true,
     maintainAspectRatio: false,
     plugins: {

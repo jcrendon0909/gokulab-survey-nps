@@ -1,0 +1,50 @@
+.sentiment-container {
+  margin-top: 3rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+}
+
+.sentiment-chart {
+  max-width: 400px;
+  margin: 0 auto 2rem;
+}
+
+.sentiment-clouds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.cloud-card {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.cloud-card h3 {
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.word-cloud {
+  width: 100%;
+  height: 250px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.word-cloud svg {
+  width: 100%;
+  height: 100%;
+}
+
+.sentiment-loading,
+.sentiment-error {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}

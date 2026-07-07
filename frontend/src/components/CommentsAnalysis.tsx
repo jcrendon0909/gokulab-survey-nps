@@ -1,0 +1,116 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import WordCloud from 'react-wordcloud';
+import { removeStopwords } from 'stopword';
+import './CommentsAnalysis.css';
+
+interface Comment {
+  likes: string;
+  improvements: string;
+  additionalComments: string;
+}
+
+interface Word {
+  text: string;
+  value: number;
+}
+
+const CommentsAnalysis: React.FC = () => {
+  const [likesWords, setLikesWords] = useState<Word[]>([]);
+  const [improvementsWords, setImprovementsWords] = useState<Word[]>([]);
+  const [additionalWords, setAdditionalWords] = useState<Word[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || '';
+        const response = await axios.get(`${API_URL}/api/survey/comments`);
+        const comments: Comment[] = response.data.comments;
+
+        setLikesWords(processTexts(comments.map(c => c.likes)));
+        setImprovementsWords(processTexts(comments.map(c => c.improvements)));
+        setAdditionalWords(processTexts(comments.map(c => c.additionalComments)));
+      } catch (err) {
+        console.error('Error cargando comentarios:', err);
+        setError('No se pudieron cargar los comentarios.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchComments();
+  }, []);
+
+  const processTexts = (texts: string[]): Word[] => {
+    const fullText = texts.filter(t => t && t.trim() !== '').join(' ');
+    if (!fullText) return [];
+
+    const words = fullText
+      .toLowerCase()
+      .match(/[a-záéíóúñü0-9]+/g) || [];
+
+    const filtered = removeStopwords(words, stopword.es);
+
+    const freq: Record<string, number> = {};
+    filtered.forEach(word => {
+      if (word.length < 3) return;
+      freq[word] = (freq[word] || 0) + 1;
+    });
+
+    const result = Object.entries(freq)
+      .map(([text, value]) => ({ text, value }))
+      .sort((a, b) => b.value - a.value);
+
+    return result.slice(0, 50);
+  };
+
+  const options = {
+    rotations: 2,
+    rotationAngles: [-90, 0],
+    fontSizes: [14, 50],
+    colors: ['#26AAA3', '#67A934', '#D61A1F', '#F8B50E', '#2c3e50'],
+  };
+
+  if (loading) return <div className="comments-loading">Cargando comentarios...</div>;
+  if (error) return <div className="comments-error">{error}</div>;
+
+  return (
+    <div className="comments-container">
+      <h2>💬 Análisis de Comentarios</h2>
+      <p className="comments-subtitle">Nubes de palabras de las preguntas abiertas</p>
+
+      <div className="clouds-grid">
+        <div className="cloud-card">
+          <h3>¿Qué te gusta más de GokuLab?</h3>
+          {likesWords.length > 0 ? (
+            <WordCloud words={likesWords} options={options} />
+          ) : (
+            <p className="no-data">No hay comentarios aún.</p>
+          )}
+        </div>
+
+        <div className="cloud-card">
+          <h3>¿Qué recomendarías mejorar?</h3>
+          {improvementsWords.length > 0 ? (
+            <WordCloud words={improvementsWords} options={options} />
+          ) : (
+            <p className="no-data">No hay comentarios aún.</p>
+          )}
+        </div>
+
+        <div className="cloud-card">
+          <h3>Comentarios adicionales</h3>
+          {additionalWords.length > 0 ? (
+            <WordCloud words={additionalWords} options={options} />
+          ) : (
+            <p className="no-data">No hay comentarios aún.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CommentsAnalysis;

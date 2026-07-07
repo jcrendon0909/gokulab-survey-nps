@@ -112,6 +112,16 @@ router.get('/survey/stats', async (req, res) => {
     console.error('Error en stats:', error);
     res.status(500).json({ error: error.message });
   }
+  // GET /api/survey/comments - Obtener todos los comentarios de texto libre
+router.get('/survey/comments', async (req, res) => {
+  try {
+    // Solo seleccionamos los campos de texto, excluimos el resto para optimizar
+    const responses = await Survey.find({}, 'likes improvements additionalComments');
+    res.json({ comments: responses });
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ✅ EXPORTAR EL ROUTER

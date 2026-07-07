@@ -64,7 +64,6 @@ const Dashboard: React.FC = () => {
         const API_URL = import.meta.env.VITE_API_URL || '';
         console.log('🔍 API_URL en Dashboard:', API_URL);
         const response = await axios.get(`${API_URL}/api/survey/stats`);
-        console.log('📊 Datos recibidos:', response.data);
         setStats(response.data);
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -245,7 +244,7 @@ const Dashboard: React.FC = () => {
         </table>
       </div>
 
-      {/* ⭐ NUEVO: Análisis de comentarios con nubes de palabras */}
+      {/* Análisis de comentarios */}
       <CommentsAnalysis />
     </motion.div>
   );

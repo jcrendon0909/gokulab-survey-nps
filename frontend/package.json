@@ -13,12 +13,12 @@
     "axios": "^1.18.1",
     "chart.js": "^4.5.1",
     "framer-motion": "^12.42.2",
+    "jquery": "^4.0.0",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.1",
-    "stopword": "^3.1.5",
-    "wordcloud2": "^1.0.0"
+    "stopword": "^3.1.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

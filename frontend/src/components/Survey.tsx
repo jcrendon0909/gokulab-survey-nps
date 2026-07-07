@@ -342,4 +342,4 @@ const handleSubmit = async (e: React.FormEvent) => {
   );
 }
 
-export default Survey;
+export default Survey; 

@@ -1,4 +1,5 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState } from 'react';
+import type { FormEvent } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import '../App.css';
@@ -39,36 +40,56 @@ function Survey() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  try {
-    console.log('📤 Enviando datos:', formData);
-    
-    // ✅ Usa la variable de entorno para la URL completa
-    const API_URL = import.meta.env.VITE_API_URL || '';
-    console.log('🔍 API_URL:', API_URL); // Para depurar
-    const response = await axios.post(`${API_URL}/api/survey`, formData);
-    
-    console.log('✅ Respuesta del servidor:', response.data);
-    setSubmitted(true);
-  } catch (error: any) {
-    console.error('❌ Error completo:', error);
-    if (error.response) {
-      console.error('❌ Respuesta del servidor (error):', error.response.data);
-      console.error('❌ Status:', error.response.status);
-      alert(`Error ${error.response.status}: ${error.response.data?.error || 'Error al enviar la encuesta'}`);
-    } else if (error.request) {
-      console.error('❌ No se recibió respuesta del servidor');
-      alert('No se pudo conectar con el servidor. ¿Está el backend corriendo?');
-    } else {
-      console.error('❌ Error al configurar la petición:', error.message);
-      alert('Error: ' + error.message);
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      console.log('📤 Enviando datos:', formData);
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      console.log('🔍 API_URL:', API_URL);
+      const response = await axios.post(`${API_URL}/api/survey`, formData);
+      console.log('✅ Respuesta del servidor:', response.data);
+      setSubmitted(true);
+    } catch (error: any) {
+      console.error('❌ Error completo:', error);
+      if (error.response) {
+        console.error('❌ Respuesta del servidor (error):', error.response.data);
+        console.error('❌ Status:', error.response.status);
+        alert(`Error ${error.response.status}: ${error.response.data?.error || 'Error al enviar la encuesta'}`);
+      } else if (error.request) {
+        console.error('❌ No se recibió respuesta del servidor');
+        alert('No se pudo conectar con el servidor. ¿Está el backend corriendo?');
+      } else {
+        console.error('❌ Error al configurar la petición:', error.message);
+        alert('Error: ' + error.message);
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
+  };
+
+  if (submitted) {
+    return (
+      <motion.div 
+        className="success-container"
+        initial={{ scale: 0.8, opacity: 0, rotate: -5 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+      >
+        <div className="confetti-container">
+          <span className="confetti-emoji">🚀</span>
+          <span className="confetti-emoji">✨</span>
+          <span className="confetti-emoji">🎉</span>
+          <span className="confetti-emoji">⭐</span>
+          <span className="confetti-emoji">🌈</span>
+        </div>
+        <div className="success-icon">🚀</div>
+        <h2>¡Gracias por tu respuesta!</h2>
+        <p>Tu opinión es el combustible que nos impulsa a mejorar cada día.</p>
+        <p className="success-hashtag">#GokuLab #Innovación #Educación</p>
+      </motion.div>
+    );
   }
-};
 
   return (
     <div className="app">
@@ -342,4 +363,4 @@ const handleSubmit = async (e: React.FormEvent) => {
   );
 }
 
-export default Survey; 
+export default Survey;

@@ -10,8 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import stopword from 'stopword';
-import { removeStopwords } from 'stopword';
+import * as stopword from 'stopword';
 import './CommentsAnalysis.css';
 
 ChartJS.register(
@@ -39,6 +38,7 @@ const CommentsAnalysis: React.FC = () => {
     const fetchComments = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_URL || '';
+        console.log('🔍 API_URL en Comments:', API_URL);
         const response = await axios.get(`${API_URL}/api/survey/comments`);
         const comments = response.data.comments;
 
@@ -63,8 +63,8 @@ const CommentsAnalysis: React.FC = () => {
       .toLowerCase()
       .match(/[a-záéíóúñü0-9]+/g) || [];
 
-    // ✅ CORRECTO: usar stopword.es (propiedad del objeto por defecto)
-    const filtered = removeStopwords(words, stopword.es);
+    // ✅ Forma correcta para esta versión de stopword
+    const filtered = stopword.removeStopwords(words, stopword.es);
 
     const freq: Record<string, number> = {};
     filtered.forEach(word => {

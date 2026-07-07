@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import ReactWordcloud from 'react-wordcloud';
 import { removeStopwords } from 'stopword';
+import { es } from 'stopword'; // ✅ Importación correcta del español
 import './CommentsAnalysis.css';
 
 interface Word {
@@ -20,14 +21,16 @@ const CommentsAnalysis: React.FC = () => {
     const fetchComments = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_URL || '';
+        console.log('🔍 API_URL en Comments:', API_URL);
         const response = await axios.get(`${API_URL}/api/survey/comments`);
+        console.log('📊 Comentarios recibidos:', response.data);
         const comments = response.data.comments;
 
         setLikesWords(processTexts(comments.map((c: any) => c.likes)));
         setImprovementsWords(processTexts(comments.map((c: any) => c.improvements)));
         setAdditionalWords(processTexts(comments.map((c: any) => c.additionalComments)));
       } catch (err) {
-        console.error(err);
+        console.error('❌ Error cargando comentarios:', err);
         setError('No se pudieron cargar los comentarios.');
       } finally {
         setLoading(false);
@@ -38,20 +41,29 @@ const CommentsAnalysis: React.FC = () => {
 
   const processTexts = (texts: string[]): Word[] => {
     const fullText = texts.filter(t => t && t.trim() !== '').join(' ');
+    console.log('📝 Texto completo a procesar:', fullText);
     if (!fullText) return [];
 
     const words = fullText.toLowerCase().match(/[a-záéíóúñü0-9]+/g) || [];
-    const filtered = removeStopwords(words, stopword.es);
+    console.log('🔤 Palabras extraídas:', words);
+    
+    // ✅ Usamos 'es' (español) correctamente importado
+    const filtered = removeStopwords(words, es);
+    console.log('✂️ Palabras filtradas (sin stopwords):', filtered);
+    
     const freq: Record<string, number> = {};
     filtered.forEach(word => {
       if (word.length < 3) return;
       freq[word] = (freq[word] || 0) + 1;
     });
 
-    return Object.entries(freq)
+    const result = Object.entries(freq)
       .map(([text, value]) => ({ text, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 50);
+    
+    console.log('📊 Frecuencias finales:', result);
+    return result;
   };
 
   const options = {

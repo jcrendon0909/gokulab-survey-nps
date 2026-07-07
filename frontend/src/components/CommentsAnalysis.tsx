@@ -2,8 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import './CommentsAnalysis.css';
 
-declare const WordCloud: any;
-
 interface Word {
   text: string;
   value: number;
@@ -46,7 +44,6 @@ const CommentsAnalysis: React.FC = () => {
         const comments = response.data.comments;
         console.log('📝 Número de comentarios:', comments.length);
 
-        // Procesar cada campo con logs intermedios
         const likesProcessed = processTexts(comments.map((c: any) => c.likes));
         const improvementsProcessed = processTexts(comments.map((c: any) => c.improvements));
         const additionalProcessed = processTexts(comments.map((c: any) => c.additionalComments));
@@ -68,7 +65,6 @@ const CommentsAnalysis: React.FC = () => {
     fetchComments();
   }, []);
 
-  // Función para procesar textos con la lista manual de stopwords
   const processTexts = (texts: string[]): Word[] => {
     const fullText = texts.filter(t => t && t.trim() !== '').join(' ');
     console.log('📝 Texto completo a procesar:', fullText);
@@ -97,8 +93,8 @@ const CommentsAnalysis: React.FC = () => {
     return result;
   };
 
-  // Renderizar la nube con logs
-  const renderWordCloud = (words: Word[], container: HTMLDivElement | null) => {
+  // Renderizar la nube con importación dinámica
+  const renderWordCloud = async (words: Word[], container: HTMLDivElement | null) => {
     if (!container || words.length === 0) {
       console.log('⏭️ No hay palabras para renderizar o contenedor nulo');
       return;
@@ -108,6 +104,9 @@ const CommentsAnalysis: React.FC = () => {
     console.log('☁️ Renderizando nube con', words.length, 'palabras');
     
     try {
+      // ✅ Importación dinámica de wordcloud2
+      const WordCloud = (await import('wordcloud2')).default;
+      
       WordCloud(container, {
         list: words.map(w => [w.text, w.value]),
         gridSize: 8,

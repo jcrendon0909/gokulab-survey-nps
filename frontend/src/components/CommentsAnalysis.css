@@ -1,63 +1,104 @@
-.comments-container {
-  margin-top: 3rem;
-  padding: 1.5rem;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import ReactWordcloud from 'react-wordcloud';
+import { removeStopwords } from 'stopword';
+import './CommentsAnalysis.css';
+
+interface Word {
+  text: string;
+  value: number;
 }
 
-.comments-container h2 {
-  color: #D61A1F;
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-}
+const CommentsAnalysis: React.FC = () => {
+  const [likesWords, setLikesWords] = useState<Word[]>([]);
+  const [improvementsWords, setImprovementsWords] = useState<Word[]>([]);
+  const [additionalWords, setAdditionalWords] = useState<Word[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-.comments-subtitle {
-  color: #666;
-  margin-bottom: 2rem;
-}
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || '';
+        const response = await axios.get(`${API_URL}/api/survey/comments`);
+        const comments = response.data.comments;
 
-.clouds-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-}
+        setLikesWords(processTexts(comments.map((c: any) => c.likes)));
+        setImprovementsWords(processTexts(comments.map((c: any) => c.improvements)));
+        setAdditionalWords(processTexts(comments.map((c: any) => c.additionalComments)));
+      } catch (err) {
+        console.error(err);
+        setError('No se pudieron cargar los comentarios.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchComments();
+  }, []);
 
-.cloud-card {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  transition: transform 0.2s ease;
-}
+  const processTexts = (texts: string[]): Word[] => {
+    const fullText = texts.filter(t => t && t.trim() !== '').join(' ');
+    if (!fullText) return [];
 
-.cloud-card:hover {
-  transform: translateY(-4px);
-}
+    const words = fullText.toLowerCase().match(/[a-záéíóúñü0-9]+/g) || [];
+    const filtered = removeStopwords(words, stopword.es);
+    const freq: Record<string, number> = {};
+    filtered.forEach(word => {
+      if (word.length < 3) return;
+      freq[word] = (freq[word] || 0) + 1;
+    });
 
-.cloud-card h3 {
-  color: #2c3e50;
-  font-size: 1.1rem;
-  text-align: center;
-  margin-bottom: 1rem;
-}
+    return Object.entries(freq)
+      .map(([text, value]) => ({ text, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 50);
+  };
 
-.no-data {
-  text-align: center;
-  color: #999;
-  padding: 2rem 0;
-}
+  const options = {
+    rotations: 2,
+    rotationAngles: [-90, 0],
+    fontSizes: [14, 50],
+    colors: ['#26AAA3', '#67A934', '#D61A1F', '#F8B50E', '#2c3e50'],
+  };
 
-.comments-loading,
-.comments-error {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-}
-.word-cloud-container {
-  width: 100%;
-  height: 300px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+  if (loading) return <div className="comments-loading">Cargando comentarios...</div>;
+  if (error) return <div className="comments-error">{error}</div>;
+
+  return (
+    <div className="comments-container">
+      <h2>💬 Análisis de Comentarios</h2>
+      <p className="comments-subtitle">Nubes de palabras de las preguntas abiertas</p>
+
+      <div className="clouds-grid">
+        <div className="cloud-card">
+          <h3>¿Qué te gusta más de GokuLab?</h3>
+          {likesWords.length > 0 ? (
+            <ReactWordcloud words={likesWords} options={options} />
+          ) : (
+            <p className="no-data">No hay comentarios aún.</p>
+          )}
+        </div>
+
+        <div className="cloud-card">
+          <h3>¿Qué recomendarías mejorar?</h3>
+          {improvementsWords.length > 0 ? (
+            <ReactWordcloud words={improvementsWords} options={options} />
+          ) : (
+            <p className="no-data">No hay comentarios aún.</p>
+          )}
+        </div>
+
+        <div className="cloud-card">
+          <h3>Comentarios adicionales</h3>
+          {additionalWords.length > 0 ? (
+            <ReactWordcloud words={additionalWords} options={options} />
+          ) : (
+            <p className="no-data">No hay comentarios aún.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CommentsAnalysis;

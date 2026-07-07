@@ -42,9 +42,19 @@
   height: 100%;
 }
 
+.no-words {
+  color: #999;
+  font-style: italic;
+}
+
 .sentiment-loading,
-.sentiment-error {
+.sentiment-error,
+.sentiment-empty {
   text-align: center;
   padding: 2rem;
   color: #666;
+}
+
+.sentiment-error {
+  color: #D61A1F;
 }

@@ -13,15 +13,16 @@ interface WordCount {
 }
 
 const SentimentAnalysis: React.FC = () => {
+  // ✅ 1. TODOS LOS HOOKS PRIMERO (sin condiciones)
   const [sentiments, setSentiments] = useState<{ positive: number; negative: number; neutral: number } | null>(null);
   const [wordClouds, setWordClouds] = useState<{ positive: WordCount[]; negative: WordCount[]; neutral: WordCount[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ 2. useEffect para obtener datos
   useEffect(() => {
     const fetchSentiment = async () => {
       try {
-        // 1. Obtener los comentarios desde el backend Node.js
         const API_URL = import.meta.env.VITE_API_URL || '';
         const response = await axios.get(`${API_URL}/api/survey/comments`);
         const comments = response.data.comments
@@ -34,13 +35,10 @@ const SentimentAnalysis: React.FC = () => {
           return;
         }
 
-        // 2. Enviar al microservicio Python
         const SENTIMENT_URL = import.meta.env.VITE_SENTIMENT_API_URL || '';
         const result = await axios.post(`${SENTIMENT_URL}/analyze`, { comments });
 
         setSentiments(result.data.sentiments);
-
-        // Convertir word_counts a formato para d3-cloud
         const wc: any = {};
         for (const [sent, words] of Object.entries(result.data.word_counts)) {
           wc[sent] = (words as any[]).map(([text, value]) => ({ text, value }));
@@ -56,21 +54,17 @@ const SentimentAnalysis: React.FC = () => {
     fetchSentiment();
   }, []);
 
-  if (loading) return <div className="sentiment-loading">Analizando sentimientos...</div>;
-  if (error) return <div className="sentiment-error">{error}</div>;
-  if (!sentiments) return null;
+  // ✅ 3. useEffect para renderizar nubes (SIEMPRE se ejecuta, pero con verificación interna)
+  useEffect(() => {
+    if (!wordClouds) return;
+    setTimeout(() => {
+      renderCloud(wordClouds.positive, 'cloud-positive');
+      renderCloud(wordClouds.negative, 'cloud-negative');
+      renderCloud(wordClouds.neutral, 'cloud-neutral');
+    }, 100);
+  }, [wordClouds]);
 
-  const chartData = {
-    labels: ['Positivos', 'Negativos', 'Neutrales'],
-    datasets: [{
-      data: [sentiments.positive, sentiments.negative, sentiments.neutral],
-      backgroundColor: ['#67A934', '#D61A1F', '#F8B50E'],
-      borderColor: '#ffffff',
-      borderWidth: 2,
-    }],
-  };
-
-  // Función para renderizar nube de palabras con d3-cloud
+  // ✅ 4. Función renderCloud (sin hooks)
   const renderCloud = (words: WordCount[], containerId: string) => {
     if (!words || words.length === 0) return;
     const container = document.getElementById(containerId);
@@ -108,16 +102,20 @@ const SentimentAnalysis: React.FC = () => {
     layout.start();
   };
 
-  // Efecto para renderizar nubes después de que el DOM esté listo
-  useEffect(() => {
-    if (wordClouds) {
-      setTimeout(() => {
-        renderCloud(wordClouds.positive, 'cloud-positive');
-        renderCloud(wordClouds.negative, 'cloud-negative');
-        renderCloud(wordClouds.neutral, 'cloud-neutral');
-      }, 100);
-    }
-  }, [wordClouds]);
+  // ✅ 5. RETORNOS CONDICIONALES (después de todos los hooks)
+  if (loading) return <div className="sentiment-loading">Analizando sentimientos...</div>;
+  if (error) return <div className="sentiment-error">{error}</div>;
+  if (!sentiments) return <div className="sentiment-empty">No hay datos de sentimiento.</div>;
+
+  const chartData = {
+    labels: ['Positivos', 'Negativos', 'Neutrales'],
+    datasets: [{
+      data: [sentiments.positive, sentiments.negative, sentiments.neutral],
+      backgroundColor: ['#67A934', '#D61A1F', '#F8B50E'],
+      borderColor: '#ffffff',
+      borderWidth: 2,
+    }],
+  };
 
   return (
     <div className="sentiment-container">

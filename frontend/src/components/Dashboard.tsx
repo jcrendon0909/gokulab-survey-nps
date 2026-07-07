@@ -60,10 +60,15 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axios.get('/api/survey/stats');
+        // ✅ CORRECCIÓN: Usar la variable de entorno para la URL completa
+        const API_URL = import.meta.env.VITE_API_URL || '';
+        console.log('🔍 API_URL en Dashboard:', API_URL);
+        const response = await axios.get(`${API_URL}/api/survey/stats`);
         setStats(response.data);
       } catch (error) {
         console.error('Error fetching stats:', error);
+        // Mostrar un mensaje más amigable en caso de error
+        alert('No se pudieron cargar las estadísticas. Verifica la conexión al backend.');
       } finally {
         setLoading(false);
       }

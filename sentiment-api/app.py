@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from pysentimiento import SentimentAnalyzer
+from pysentimiento.analyzer import SentimentAnalyzer
 from collections import Counter
 import re
 

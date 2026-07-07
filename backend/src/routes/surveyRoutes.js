@@ -115,4 +115,4 @@ router.get('/survey/stats', async (req, res) => {
 });
 
 // ✅ EXPORTAR EL ROUTER
-module.exports = router;
+module.exports = router; 

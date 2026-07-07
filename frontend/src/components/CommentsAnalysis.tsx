@@ -2,21 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import './CommentsAnalysis.css';
 
-// Declaración de tipos para wordcloud2
 declare const WordCloud: any;
-
-interface Comment {
-  likes: string;
-  improvements: string;
-  additionalComments: string;
-}
 
 interface Word {
   text: string;
   value: number;
 }
 
-// Lista de stopwords en español
+// Lista de stopwords en español (manual, para evitar problemas de importación)
 const stopwordsES = [
   'a', 'al', 'algo', 'algunas', 'algunos', 'ante', 'antes', 'aquel', 'aquella', 'aquellas', 'aquellos', 'aquí', 'arriba',
   'bajo', 'bastante', 'bien', 'cada', 'cierta', 'ciertas', 'ciertos', 'como', 'con', 'conmigo', 'contigo', 'contra',
@@ -49,53 +42,70 @@ const CommentsAnalysis: React.FC = () => {
         const API_URL = import.meta.env.VITE_API_URL || '';
         console.log('🔍 API_URL en Comments:', API_URL);
         const response = await axios.get(`${API_URL}/api/survey/comments`);
-        console.log('📊 Comentarios recibidos:', response.data);
-        const comments: Comment[] = response.data.comments;
+        console.log('📊 Comentarios recibidos (raw):', response.data);
+        const comments = response.data.comments;
+        console.log('📝 Número de comentarios:', comments.length);
 
-        setLikesWords(processTexts(comments.map(c => c.likes)));
-        setImprovementsWords(processTexts(comments.map(c => c.improvements)));
-        setAdditionalWords(processTexts(comments.map(c => c.additionalComments)));
+        // Procesar cada campo con logs intermedios
+        const likesProcessed = processTexts(comments.map((c: any) => c.likes));
+        const improvementsProcessed = processTexts(comments.map((c: any) => c.improvements));
+        const additionalProcessed = processTexts(comments.map((c: any) => c.additionalComments));
+
+        console.log('✅ Likes procesados:', likesProcessed);
+        console.log('✅ Improvements procesados:', improvementsProcessed);
+        console.log('✅ Additional procesados:', additionalProcessed);
+
+        setLikesWords(likesProcessed);
+        setImprovementsWords(improvementsProcessed);
+        setAdditionalWords(additionalProcessed);
       } catch (err) {
-        console.error('Error cargando comentarios:', err);
+        console.error('❌ Error cargando comentarios:', err);
         setError('No se pudieron cargar los comentarios.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchComments();
   }, []);
 
-  // Función para procesar textos (con stopwords manuales)
+  // Función para procesar textos con la lista manual de stopwords
   const processTexts = (texts: string[]): Word[] => {
     const fullText = texts.filter(t => t && t.trim() !== '').join(' ');
+    console.log('📝 Texto completo a procesar:', fullText);
     if (!fullText) return [];
 
     const words = fullText
       .toLowerCase()
       .match(/[a-záéíóúñü0-9]+/g) || [];
+    console.log('🔤 Palabras extraídas (sin filtrar):', words);
 
-    // Filtrar stopwords manualmente
     const filtered = words.filter(word => 
       word.length >= 3 && !stopwordsES.includes(word)
     );
+    console.log('✂️ Palabras filtradas (sin stopwords):', filtered);
 
     const freq: Record<string, number> = {};
     filtered.forEach(word => {
       freq[word] = (freq[word] || 0) + 1;
     });
 
-    return Object.entries(freq)
+    const result = Object.entries(freq)
       .map(([text, value]) => ({ text, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 50);
+    console.log('📊 Frecuencias finales:', result);
+    return result;
   };
 
-  // Renderizar la nube
+  // Renderizar la nube con logs
   const renderWordCloud = (words: Word[], container: HTMLDivElement | null) => {
-    if (!container || words.length === 0) return;
+    if (!container || words.length === 0) {
+      console.log('⏭️ No hay palabras para renderizar o contenedor nulo');
+      return;
+    }
     
     container.innerHTML = '';
+    console.log('☁️ Renderizando nube con', words.length, 'palabras');
     
     try {
       WordCloud(container, {
@@ -111,21 +121,29 @@ const CommentsAnalysis: React.FC = () => {
         minRotation: -Math.PI / 6,
         maxRotation: Math.PI / 6,
       });
+      console.log('✅ Nube renderizada correctamente');
     } catch (err) {
-      console.error('Error renderizando nube:', err);
+      console.error('❌ Error renderizando nube:', err);
     }
   };
 
+  // Efectos para renderizar las nubes cuando cambian los datos
   useEffect(() => {
-    if (likesWords.length > 0) renderWordCloud(likesWords, likesRef.current);
+    if (likesWords.length > 0) {
+      renderWordCloud(likesWords, likesRef.current);
+    }
   }, [likesWords]);
 
   useEffect(() => {
-    if (improvementsWords.length > 0) renderWordCloud(improvementsWords, improvementsRef.current);
+    if (improvementsWords.length > 0) {
+      renderWordCloud(improvementsWords, improvementsRef.current);
+    }
   }, [improvementsWords]);
 
   useEffect(() => {
-    if (additionalWords.length > 0) renderWordCloud(additionalWords, additionalRef.current);
+    if (additionalWords.length > 0) {
+      renderWordCloud(additionalWords, additionalRef.current);
+    }
   }, [additionalWords]);
 
   if (loading) return <div className="comments-loading">Cargando comentarios...</div>;

@@ -1,16 +1,11 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from transformers import pipeline
+from textblob import TextBlob
 from collections import Counter
 import re
 
 app = Flask(__name__)
 CORS(app)
-
-# Cargar el pipeline de análisis de sentimiento en español
-print("🔄 Cargando modelo de sentimiento...")
-sentiment_pipeline = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
-print("✅ Modelo cargado correctamente")
 
 STOPWORDS = {'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'durante', 'según', 'mediante', 'versus', 'vía', 'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'nuestro', 'nuestra', 'nuestros', 'nuestras', 'vuestro', 'vuestra', 'vuestros', 'vuestras'}
 
@@ -36,13 +31,12 @@ def analyze():
         cleaned = clean_text(text)
         if not cleaned:
             continue
-        # Obtener sentimiento
-        result = sentiment_pipeline(cleaned)[0]
-        label = result['label']
-        # Mapear a nuestro formato (el modelo usa estrellas 1-5)
-        if '5' in label or '4' in label:
+        blob = TextBlob(cleaned)
+        polarity = blob.sentiment.polarity
+        # Umbrales más sensibles para español (textos cortos)
+        if polarity > 0.05:
             sentiment = 'positive'
-        elif '1' in label or '2' in label:
+        elif polarity < -0.05:
             sentiment = 'negative'
         else:
             sentiment = 'neutral'

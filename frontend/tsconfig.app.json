@@ -22,7 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* 👇 Agregar typeRoots */
+    /* ✅ Agrega esto para tipos personalizados */
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": [

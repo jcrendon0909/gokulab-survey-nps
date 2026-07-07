@@ -7,6 +7,7 @@ import re
 app = Flask(__name__)
 CORS(app)
 
+# Cargar el analizador de sentimiento en español
 analyzer = SentimentAnalyzer(lang="es")
 
 # Palabras vacías básicas (opcional, pero ayuda a limpiar)

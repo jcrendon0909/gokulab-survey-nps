@@ -1,27 +1,33 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { removeStopwords } from 'stopword';
+import { es } from 'stopword';
 import './CommentsAnalysis.css';
+
+// Registrar componentes de Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface Word {
   text: string;
   value: number;
 }
-
-// Lista de stopwords en español (manual, para evitar problemas de importación)
-const stopwordsES = [
-  'a', 'al', 'algo', 'algunas', 'algunos', 'ante', 'antes', 'aquel', 'aquella', 'aquellas', 'aquellos', 'aquí', 'arriba',
-  'bajo', 'bastante', 'bien', 'cada', 'cierta', 'ciertas', 'ciertos', 'como', 'con', 'conmigo', 'contigo', 'contra',
-  'cual', 'cuales', 'cualquier', 'cuando', 'cuanto', 'cuantos', 'de', 'del', 'demás', 'dentro', 'desde', 'donde',
-  'durante', 'e', 'el', 'ella', 'ellas', 'ello', 'ellos', 'en', 'encima', 'entonces', 'entre', 'era', 'eran', 'esa',
-  'esas', 'ese', 'eso', 'esos', 'esta', 'estaba', 'estaban', 'estado', 'estados', 'estamos', 'estando', 'estar', 'estará',
-  'estas', 'este', 'esto', 'estos', 'estoy', 'ex', 'excepto', 'fin', 'fue', 'fuera', 'fueron', 'gran', 'hasta', 'hay',
-  'he', 'hemos', 'hoy', 'la', 'las', 'le', 'les', 'lo', 'los', 'más', 'me', 'mi', 'mis', 'mismo', 'mucho', 'muy', 'nada',
-  'ni', 'no', 'nos', 'nosotros', 'nuestra', 'nuestras', 'nuestro', 'nuestros', 'o', 'os', 'otra', 'otras', 'otro', 'otros',
-  'para', 'pero', 'poco', 'por', 'porque', 'pues', 'que', 'quien', 'quienes', 'qué', 'se', 'ser', 'será', 'sí', 'sido',
-  'siendo', 'sin', 'sobre', 'son', 'su', 'sus', 'suya', 'suyas', 'suyo', 'suyos', 'tal', 'también', 'tanto', 'te', 'tendrá',
-  'ti', 'tiene', 'tienen', 'toda', 'todas', 'todo', 'todos', 'tu', 'tus', 'un', 'una', 'unas', 'uno', 'unos', 'usted',
-  'vuestra', 'vuestras', 'vuestro', 'vuestros', 'y', 'ya', 'yo'
-];
 
 const CommentsAnalysis: React.FC = () => {
   const [likesWords, setLikesWords] = useState<Word[]>([]);
@@ -30,31 +36,17 @@ const CommentsAnalysis: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const likesRef = useRef<HTMLDivElement>(null);
-  const improvementsRef = useRef<HTMLDivElement>(null);
-  const additionalRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const fetchComments = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_URL || '';
         console.log('🔍 API_URL en Comments:', API_URL);
         const response = await axios.get(`${API_URL}/api/survey/comments`);
-        console.log('📊 Comentarios recibidos (raw):', response.data);
         const comments = response.data.comments;
-        console.log('📝 Número de comentarios:', comments.length);
 
-        const likesProcessed = processTexts(comments.map((c: any) => c.likes));
-        const improvementsProcessed = processTexts(comments.map((c: any) => c.improvements));
-        const additionalProcessed = processTexts(comments.map((c: any) => c.additionalComments));
-
-        console.log('✅ Likes procesados:', likesProcessed);
-        console.log('✅ Improvements procesados:', improvementsProcessed);
-        console.log('✅ Additional procesados:', additionalProcessed);
-
-        setLikesWords(likesProcessed);
-        setImprovementsWords(improvementsProcessed);
-        setAdditionalWords(additionalProcessed);
+        setLikesWords(processTexts(comments.map((c: any) => c.likes)));
+        setImprovementsWords(processTexts(comments.map((c: any) => c.improvements)));
+        setAdditionalWords(processTexts(comments.map((c: any) => c.additionalComments)));
       } catch (err) {
         console.error('❌ Error cargando comentarios:', err);
         setError('No se pudieron cargar los comentarios.');
@@ -67,83 +59,61 @@ const CommentsAnalysis: React.FC = () => {
 
   const processTexts = (texts: string[]): Word[] => {
     const fullText = texts.filter(t => t && t.trim() !== '').join(' ');
-    console.log('📝 Texto completo a procesar:', fullText);
     if (!fullText) return [];
 
     const words = fullText
       .toLowerCase()
       .match(/[a-záéíóúñü0-9]+/g) || [];
-    console.log('🔤 Palabras extraídas (sin filtrar):', words);
 
-    const filtered = words.filter(word => 
-      word.length >= 3 && !stopwordsES.includes(word)
-    );
-    console.log('✂️ Palabras filtradas (sin stopwords):', filtered);
+    const filtered = removeStopwords(words, es);
 
     const freq: Record<string, number> = {};
     filtered.forEach(word => {
+      if (word.length < 3) return;
       freq[word] = (freq[word] || 0) + 1;
     });
 
-    const result = Object.entries(freq)
+    return Object.entries(freq)
       .map(([text, value]) => ({ text, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 50);
-    console.log('📊 Frecuencias finales:', result);
-    return result;
+      .slice(0, 15);
   };
 
-  // Renderizar la nube con importación dinámica
-  const renderWordCloud = async (words: Word[], container: HTMLDivElement | null) => {
-    if (!container || words.length === 0) {
-      console.log('⏭️ No hay palabras para renderizar o contenedor nulo');
-      return;
-    }
-    
-    container.innerHTML = '';
-    console.log('☁️ Renderizando nube con', words.length, 'palabras');
-    
-    try {
-      // ✅ Importación dinámica de wordcloud2
-      const WordCloud = (await import('wordcloud2')).default;
-      
-      WordCloud(container, {
-        list: words.map(w => [w.text, w.value]),
-        gridSize: 8,
-        weightFactor: (w: number) => w * 8,
-        fontFamily: 'Poppins, sans-serif',
-        color: () => {
-          const colors = ['#26AAA3', '#67A934', '#D61A1F', '#F8B50E', '#2c3e50'];
-          return colors[Math.floor(Math.random() * colors.length)];
+  const chartOptions = {
+    indexAxis: 'y' as const,
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
         },
-        rotateRatio: 0.5,
-        minRotation: -Math.PI / 6,
-        maxRotation: Math.PI / 6,
-      });
-      console.log('✅ Nube renderizada correctamente');
-    } catch (err) {
-      console.error('❌ Error renderizando nube:', err);
-    }
+      },
+      y: {
+        grid: {
+          display: false,
+        },
+      },
+    },
   };
 
-  // Efectos para renderizar las nubes cuando cambian los datos
-  useEffect(() => {
-    if (likesWords.length > 0) {
-      renderWordCloud(likesWords, likesRef.current);
-    }
-  }, [likesWords]);
-
-  useEffect(() => {
-    if (improvementsWords.length > 0) {
-      renderWordCloud(improvementsWords, improvementsRef.current);
-    }
-  }, [improvementsWords]);
-
-  useEffect(() => {
-    if (additionalWords.length > 0) {
-      renderWordCloud(additionalWords, additionalRef.current);
-    }
-  }, [additionalWords]);
+  const createChartData = (words: Word[]) => ({
+    labels: words.map(w => w.text),
+    datasets: [
+      {
+        data: words.map(w => w.value),
+        backgroundColor: '#26AAA3',
+        borderColor: '#1D8A84',
+        borderWidth: 1,
+        borderRadius: 4,
+      },
+    ],
+  });
 
   if (loading) return <div className="comments-loading">Cargando comentarios...</div>;
   if (error) return <div className="comments-error">{error}</div>;
@@ -151,37 +121,40 @@ const CommentsAnalysis: React.FC = () => {
   return (
     <div className="comments-container">
       <h2>💬 Análisis de Comentarios</h2>
-      <p className="comments-subtitle">Nubes de palabras de las preguntas abiertas</p>
+      <p className="comments-subtitle">Palabras más frecuentes en las preguntas abiertas</p>
 
       <div className="clouds-grid">
         <div className="cloud-card">
           <h3>¿Qué te gusta más de GokuLab?</h3>
-          <div 
-            ref={likesRef} 
-            className="word-cloud-container"
-            style={{ width: '100%', height: '300px' }}
-          ></div>
-          {likesWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
+          <div style={{ height: '300px' }}>
+            {likesWords.length > 0 ? (
+              <Bar data={createChartData(likesWords)} options={chartOptions} />
+            ) : (
+              <p className="no-data">No hay comentarios aún.</p>
+            )}
+          </div>
         </div>
 
         <div className="cloud-card">
           <h3>¿Qué recomendarías mejorar?</h3>
-          <div 
-            ref={improvementsRef} 
-            className="word-cloud-container"
-            style={{ width: '100%', height: '300px' }}
-          ></div>
-          {improvementsWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
+          <div style={{ height: '300px' }}>
+            {improvementsWords.length > 0 ? (
+              <Bar data={createChartData(improvementsWords)} options={chartOptions} />
+            ) : (
+              <p className="no-data">No hay comentarios aún.</p>
+            )}
+          </div>
         </div>
 
         <div className="cloud-card">
           <h3>Comentarios adicionales</h3>
-          <div 
-            ref={additionalRef} 
-            className="word-cloud-container"
-            style={{ width: '100%', height: '300px' }}
-          ></div>
-          {additionalWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
+          <div style={{ height: '300px' }}>
+            {additionalWords.length > 0 ? (
+              <Bar data={createChartData(additionalWords)} options={chartOptions} />
+            ) : (
+              <p className="no-data">No hay comentarios aún.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

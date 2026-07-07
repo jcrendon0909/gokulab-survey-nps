@@ -13,9 +13,9 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import CommentsAnalysis from './CommentsAnalysis';
+import SentimentAnalysis from './SentimentAnalysis'; // ✅ Importado correctamente
 import './Dashboard.css';
 
-// Registrar componentes de Chart.js
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -88,7 +88,6 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // Datos para gráfico de barras de promedios
   const avgLabels = [
     'Atención Admin.',
     'Comunicación Admin.',
@@ -125,7 +124,6 @@ const Dashboard: React.FC = () => {
     ],
   };
 
-  // Datos para gráfico de dona de NPS
   const npsData = {
     labels: ['Promotores (9-10)', 'Pasivos (7-8)', 'Detractores (0-6)'],
     datasets: [
@@ -138,7 +136,6 @@ const Dashboard: React.FC = () => {
     ],
   };
 
-  // Datos para distribución por edad
   const ageLabels = Object.keys(stats.ageDistribution);
   const ageValues = Object.values(stats.ageDistribution);
   const ageChartData = {
@@ -166,7 +163,6 @@ const Dashboard: React.FC = () => {
         <p>Estadísticas de la encuesta de satisfacción</p>
       </header>
 
-      {/* Tarjetas de resumen */}
       <div className="summary-cards">
         <motion.div className="card" whileHover={{ scale: 1.02 }}>
           <h3>Total de Respuestas</h3>
@@ -188,7 +184,6 @@ const Dashboard: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* Gráficos */}
       <div className="charts-grid">
         <div className="chart-card">
           <h3>Promedios por Sección</h3>
@@ -219,7 +214,6 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabla de respuestas recientes */}
       <div className="recent-table">
         <h3>Últimas Respuestas</h3>
         <table>
@@ -244,8 +238,11 @@ const Dashboard: React.FC = () => {
         </table>
       </div>
 
-      {/* Análisis de comentarios */}
+      {/* Análisis de comentarios (gráficos de barras) */}
       <CommentsAnalysis />
+
+      {/* ✅ Nuevo análisis de sentimiento (nubes de palabras) */}
+      <SentimentAnalysis />
     </motion.div>
   );
 };

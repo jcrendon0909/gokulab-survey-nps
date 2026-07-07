@@ -1,16 +1,15 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from pysentimiento.analyzer import SentimentAnalyzer
+from transformers import pipeline
 from collections import Counter
 import re
 
 app = Flask(__name__)
 CORS(app)
 
-# Cargar el analizador de sentimiento en español
-analyzer = SentimentAnalyzer(lang="es")
+# Cargar el pipeline de análisis de sentimiento en español
+sentiment_pipeline = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 
-# Palabras vacías básicas (opcional, pero ayuda a limpiar)
 STOPWORDS = {'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'durante', 'según', 'mediante', 'versus', 'vía', 'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'nuestro', 'nuestra', 'nuestros', 'nuestras', 'vuestro', 'vuestra', 'vuestros', 'vuestras'}
 
 def clean_text(text):
@@ -35,20 +34,19 @@ def analyze():
         cleaned = clean_text(text)
         if not cleaned:
             continue
-        # Analizar sentimiento con pysentimiento
-        result = analyzer.predict(cleaned)
-        sentiment = result.output  # 'POS', 'NEG' o 'NEU'
-        # Mapear a nuestro formato
-        if sentiment == 'POS':
-            label = 'positive'
-        elif sentiment == 'NEG':
-            label = 'negative'
+        # Obtener sentimiento
+        result = sentiment_pipeline(cleaned)[0]
+        label = result['label']
+        # Mapear a nuestro formato (el modelo usa estrellas 1-5)
+        if '5' in label or '4' in label:
+            sentiment = 'positive'
+        elif '1' in label or '2' in label:
+            sentiment = 'negative'
         else:
-            label = 'neutral'
-        results.append({'text': text, 'sentiment': label})
-        sentiments[label].append(cleaned)
+            sentiment = 'neutral'
+        results.append({'text': text, 'sentiment': sentiment})
+        sentiments[sentiment].append(cleaned)
 
-    # Contar palabras por sentimiento
     word_counts = {}
     for sent, texts in sentiments.items():
         all_words = ' '.join(texts).split()

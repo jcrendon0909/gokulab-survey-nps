@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { removeStopwords } from 'stopword';
 import './CommentsAnalysis.css';
 
-// Declaración de tipos para wordcloud2 (ya que no tiene @types)
+// Declaración de tipos para wordcloud2
 declare const WordCloud: any;
 
 interface Comment {
@@ -17,14 +16,29 @@ interface Word {
   value: number;
 }
 
+// Lista de stopwords en español
+const stopwordsES = [
+  'a', 'al', 'algo', 'algunas', 'algunos', 'ante', 'antes', 'aquel', 'aquella', 'aquellas', 'aquellos', 'aquí', 'arriba',
+  'bajo', 'bastante', 'bien', 'cada', 'cierta', 'ciertas', 'ciertos', 'como', 'con', 'conmigo', 'contigo', 'contra',
+  'cual', 'cuales', 'cualquier', 'cuando', 'cuanto', 'cuantos', 'de', 'del', 'demás', 'dentro', 'desde', 'donde',
+  'durante', 'e', 'el', 'ella', 'ellas', 'ello', 'ellos', 'en', 'encima', 'entonces', 'entre', 'era', 'eran', 'esa',
+  'esas', 'ese', 'eso', 'esos', 'esta', 'estaba', 'estaban', 'estado', 'estados', 'estamos', 'estando', 'estar', 'estará',
+  'estas', 'este', 'esto', 'estos', 'estoy', 'ex', 'excepto', 'fin', 'fue', 'fuera', 'fueron', 'gran', 'hasta', 'hay',
+  'he', 'hemos', 'hoy', 'la', 'las', 'le', 'les', 'lo', 'los', 'más', 'me', 'mi', 'mis', 'mismo', 'mucho', 'muy', 'nada',
+  'ni', 'no', 'nos', 'nosotros', 'nuestra', 'nuestras', 'nuestro', 'nuestros', 'o', 'os', 'otra', 'otras', 'otro', 'otros',
+  'para', 'pero', 'poco', 'por', 'porque', 'pues', 'que', 'quien', 'quienes', 'qué', 'se', 'ser', 'será', 'sí', 'sido',
+  'siendo', 'sin', 'sobre', 'son', 'su', 'sus', 'suya', 'suyas', 'suyo', 'suyos', 'tal', 'también', 'tanto', 'te', 'tendrá',
+  'ti', 'tiene', 'tienen', 'toda', 'todas', 'todo', 'todos', 'tu', 'tus', 'un', 'una', 'unas', 'uno', 'unos', 'usted',
+  'vuestra', 'vuestras', 'vuestro', 'vuestros', 'y', 'ya', 'yo'
+];
+
 const CommentsAnalysis: React.FC = () => {
   const [likesWords, setLikesWords] = useState<Word[]>([]);
   const [improvementsWords, setImprovementsWords] = useState<Word[]>([]);
   const [additionalWords, setAdditionalWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Refs para los contenedores de la nube
+
   const likesRef = useRef<HTMLDivElement>(null);
   const improvementsRef = useRef<HTMLDivElement>(null);
   const additionalRef = useRef<HTMLDivElement>(null);
@@ -52,7 +66,7 @@ const CommentsAnalysis: React.FC = () => {
     fetchComments();
   }, []);
 
-  // Procesar textos: limpiar, tokenizar, eliminar stopwords y contar frecuencias
+  // Función para procesar textos (con stopwords manuales)
   const processTexts = (texts: string[]): Word[] => {
     const fullText = texts.filter(t => t && t.trim() !== '').join(' ');
     if (!fullText) return [];
@@ -61,11 +75,13 @@ const CommentsAnalysis: React.FC = () => {
       .toLowerCase()
       .match(/[a-záéíóúñü0-9]+/g) || [];
 
-    const filtered = removeStopwords(words, stopword.es);
+    // Filtrar stopwords manualmente
+    const filtered = words.filter(word => 
+      word.length >= 3 && !stopwordsES.includes(word)
+    );
 
     const freq: Record<string, number> = {};
     filtered.forEach(word => {
-      if (word.length < 3) return;
       freq[word] = (freq[word] || 0) + 1;
     });
 
@@ -75,7 +91,7 @@ const CommentsAnalysis: React.FC = () => {
       .slice(0, 50);
   };
 
-  // Renderizar la nube de palabras usando wordcloud2
+  // Renderizar la nube
   const renderWordCloud = (words: Word[], container: HTMLDivElement | null) => {
     if (!container || words.length === 0) return;
     
@@ -100,7 +116,6 @@ const CommentsAnalysis: React.FC = () => {
     }
   };
 
-  // Efectos para renderizar las nubes cuando cambian los datos
   useEffect(() => {
     if (likesWords.length > 0) renderWordCloud(likesWords, likesRef.current);
   }, [likesWords]);

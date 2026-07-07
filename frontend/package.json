@@ -17,7 +17,7 @@
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.1",
-    "react-wordcloud": "^1.2.7",
+    "stopword": "^3.1.5",
     "wordcloud2": "^1.0.0"
   },
   "devDependencies": {

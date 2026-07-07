@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import ReactWordcloud from 'react-wordcloud';
 import { removeStopwords } from 'stopword';
-import { es } from 'stopword'; // ✅ Importación correcta del español
+import { es } from 'stopword'; // ✅ Importación correcta
 import './CommentsAnalysis.css';
+
+declare const WordCloud: any;
 
 interface Word {
   text: string;
@@ -16,21 +17,23 @@ const CommentsAnalysis: React.FC = () => {
   const [additionalWords, setAdditionalWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const likesRef = useRef<HTMLDivElement>(null);
+  const improvementsRef = useRef<HTMLDivElement>(null);
+  const additionalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchComments = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_URL || '';
-        console.log('🔍 API_URL en Comments:', API_URL);
         const response = await axios.get(`${API_URL}/api/survey/comments`);
-        console.log('📊 Comentarios recibidos:', response.data);
         const comments = response.data.comments;
 
         setLikesWords(processTexts(comments.map((c: any) => c.likes)));
         setImprovementsWords(processTexts(comments.map((c: any) => c.improvements)));
         setAdditionalWords(processTexts(comments.map((c: any) => c.additionalComments)));
       } catch (err) {
-        console.error('❌ Error cargando comentarios:', err);
+        console.error(err);
         setError('No se pudieron cargar los comentarios.');
       } finally {
         setLoading(false);
@@ -41,37 +44,58 @@ const CommentsAnalysis: React.FC = () => {
 
   const processTexts = (texts: string[]): Word[] => {
     const fullText = texts.filter(t => t && t.trim() !== '').join(' ');
-    console.log('📝 Texto completo a procesar:', fullText);
     if (!fullText) return [];
 
     const words = fullText.toLowerCase().match(/[a-záéíóúñü0-9]+/g) || [];
-    console.log('🔤 Palabras extraídas:', words);
-    
-    // ✅ Usamos 'es' (español) correctamente importado
-    const filtered = removeStopwords(words, es);
-    console.log('✂️ Palabras filtradas (sin stopwords):', filtered);
-    
+    const filtered = removeStopwords(words, es); // ✅ Ahora sí funciona
     const freq: Record<string, number> = {};
     filtered.forEach(word => {
       if (word.length < 3) return;
       freq[word] = (freq[word] || 0) + 1;
     });
 
-    const result = Object.entries(freq)
+    return Object.entries(freq)
       .map(([text, value]) => ({ text, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 50);
-    
-    console.log('📊 Frecuencias finales:', result);
-    return result;
   };
 
-  const options = {
-    rotations: 2,
-    rotationAngles: [-90, 0],
-    fontSizes: [14, 50],
-    colors: ['#26AAA3', '#67A934', '#D61A1F', '#F8B50E', '#2c3e50'],
+  const renderWordCloud = (words: Word[], container: HTMLDivElement | null) => {
+    if (!container || words.length === 0) return;
+    
+    container.innerHTML = '';
+    setTimeout(() => {
+      try {
+        WordCloud(container, {
+          list: words.map(w => [w.text, w.value]),
+          gridSize: 8,
+          weightFactor: (w: number) => w * 8,
+          fontFamily: 'Poppins, sans-serif',
+          color: () => {
+            const colors = ['#26AAA3', '#67A934', '#D61A1F', '#F8B50E', '#2c3e50'];
+            return colors[Math.floor(Math.random() * colors.length)];
+          },
+          rotateRatio: 0.5,
+          minRotation: -Math.PI / 6,
+          maxRotation: Math.PI / 6,
+        });
+      } catch (err) {
+        console.error('Error renderizando nube:', err);
+      }
+    }, 300);
   };
+
+  useEffect(() => {
+    if (likesWords.length > 0) renderWordCloud(likesWords, likesRef.current);
+  }, [likesWords]);
+
+  useEffect(() => {
+    if (improvementsWords.length > 0) renderWordCloud(improvementsWords, improvementsRef.current);
+  }, [improvementsWords]);
+
+  useEffect(() => {
+    if (additionalWords.length > 0) renderWordCloud(additionalWords, additionalRef.current);
+  }, [additionalWords]);
 
   if (loading) return <div className="comments-loading">Cargando comentarios...</div>;
   if (error) return <div className="comments-error">{error}</div>;
@@ -84,29 +108,32 @@ const CommentsAnalysis: React.FC = () => {
       <div className="clouds-grid">
         <div className="cloud-card">
           <h3>¿Qué te gusta más de GokuLab?</h3>
-          {likesWords.length > 0 ? (
-            <ReactWordcloud words={likesWords} options={options} />
-          ) : (
-            <p className="no-data">No hay comentarios aún.</p>
-          )}
+          <div 
+            ref={likesRef} 
+            className="word-cloud-container"
+            style={{ width: '100%', height: '300px' }}
+          ></div>
+          {likesWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
         </div>
 
         <div className="cloud-card">
           <h3>¿Qué recomendarías mejorar?</h3>
-          {improvementsWords.length > 0 ? (
-            <ReactWordcloud words={improvementsWords} options={options} />
-          ) : (
-            <p className="no-data">No hay comentarios aún.</p>
-          )}
+          <div 
+            ref={improvementsRef} 
+            className="word-cloud-container"
+            style={{ width: '100%', height: '300px' }}
+          ></div>
+          {improvementsWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
         </div>
 
         <div className="cloud-card">
           <h3>Comentarios adicionales</h3>
-          {additionalWords.length > 0 ? (
-            <ReactWordcloud words={additionalWords} options={options} />
-          ) : (
-            <p className="no-data">No hay comentarios aún.</p>
-          )}
+          <div 
+            ref={additionalRef} 
+            className="word-cloud-container"
+            style={{ width: '100%', height: '300px' }}
+          ></div>
+          {additionalWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
         </div>
       </div>
     </div>

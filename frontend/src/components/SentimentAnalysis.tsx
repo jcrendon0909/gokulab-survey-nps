@@ -60,7 +60,6 @@ const SentimentAnalysis: React.FC = () => {
   if (error) return <div className="sentiment-error">{error}</div>;
   if (!sentiments) return null;
 
-  const total = sentiments.positive + sentiments.negative + sentiments.neutral;
   const chartData = {
     labels: ['Positivos', 'Negativos', 'Neutrales'],
     datasets: [{

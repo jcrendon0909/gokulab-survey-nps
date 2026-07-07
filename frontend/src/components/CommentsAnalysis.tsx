@@ -10,8 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { removeStopwords } from 'stopword';
-import { es } from 'stopword';
+import * as stopword from 'stopword';
 import './CommentsAnalysis.css';
 
 ChartJS.register(
@@ -64,7 +63,8 @@ const CommentsAnalysis: React.FC = () => {
       .toLowerCase()
       .match(/[a-záéíóúñü0-9]+/g) || [];
 
-    const filtered = removeStopwords(words, es);
+    // ✅ FORMA CORRECTA: usar stopword.removeStopwords y stopword.es
+    const filtered = stopword.removeStopwords(words, stopword.es);
 
     const freq: Record<string, number> = {};
     filtered.forEach(word => {

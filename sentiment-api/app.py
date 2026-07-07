@@ -27,9 +27,10 @@ def analyze_sentiment(text):
     """Clasifica el sentimiento del texto usando TextBlob."""
     blob = TextBlob(text)
     polarity = blob.sentiment.polarity  # -1 a +1
-    if polarity > 0.1:
+    print(f"🔎 Texto: '{text}' -> Polaridad: {polarity}")  # LOG para depurar
+    if polarity > 0.05:
         return 'positive'
-    elif polarity < -0.1:
+    elif polarity < -0.05:
         return 'negative'
     else:
         return 'neutral'

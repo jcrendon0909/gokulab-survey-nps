@@ -1,250 +1,143 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
-import CommentsAnalysis from './CommentsAnalysis';
-import SentimentAnalysis from './SentimentAnalysis'; // ✅ Importado correctamente
-import './Dashboard.css';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import WordCloud from 'd3-cloud';
+import './SentimentAnalysis.css';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-interface Stats {
-  total: number;
-  nps: number;
-  promoters: number;
-  passives: number;
-  detractors: number;
-  averages: {
-    adminAttention: number;
-    adminCommunication: number;
-    adminScheduling: number;
-    teacherKnowledge: number;
-    teacherClarity: number;
-    teacherEngagement: number;
-    improvementSkills: number;
-    interestTech: number;
-    projectsUseful: number;
-  };
-  ageDistribution: Record<string, number>;
-  respondentTypeDistribution: Record<string, number>;
-  recentResponses: Array<{
-    id: string;
-    studentName: string;
-    npsScore: number;
-    respondentType: string;
-    createdAt: string;
-  }>;
+interface WordCount {
+  text: string;
+  value: number;
 }
 
-const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<Stats | null>(null);
+const SentimentAnalysis: React.FC = () => {
+  // ✅ Todos los hooks se declaran siempre, sin condiciones
+  const [sentiments, setSentiments] = useState<{ positive: number; negative: number; neutral: number } | null>(null);
+  const [wordClouds, setWordClouds] = useState<{ positive: WordCount[]; negative: WordCount[]; neutral: WordCount[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchSentiment = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_URL || '';
-        console.log('🔍 API_URL en Dashboard:', API_URL);
-        const response = await axios.get(`${API_URL}/api/survey/stats`);
-        setStats(response.data);
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        alert('No se pudieron cargar las estadísticas. Verifica la conexión al backend.');
+        const response = await axios.get(`${API_URL}/api/survey/comments`);
+        const comments = response.data.comments
+          .map((c: any) => [c.likes, c.improvements, c.additionalComments])
+          .flat()
+          .filter(Boolean);
+        if (comments.length === 0) {
+          setError('No hay comentarios para analizar.');
+          setLoading(false);
+          return;
+        }
+
+        const SENTIMENT_URL = import.meta.env.VITE_SENTIMENT_API_URL || '';
+        const result = await axios.post(`${SENTIMENT_URL}/analyze`, { comments });
+
+        setSentiments(result.data.sentiments);
+        const wc: any = {};
+        for (const [sent, words] of Object.entries(result.data.word_counts)) {
+          wc[sent] = (words as any[]).map(([text, value]) => ({ text, value }));
+        }
+        setWordClouds(wc);
+      } catch (err) {
+        console.error('Error en análisis de sentimiento:', err);
+        setError('No se pudo cargar el análisis de sentimiento.');
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchSentiment();
   }, []);
 
-  if (loading) {
-    return <div className="dashboard-loading">Cargando estadísticas...</div>;
-  }
+  // ✅ Efecto para renderizar nubes (siempre se ejecuta, pero con verificación interna)
+  useEffect(() => {
+    if (!wordClouds) return;
+    setTimeout(() => {
+      renderCloud(wordClouds.positive, 'cloud-positive');
+      renderCloud(wordClouds.negative, 'cloud-negative');
+      renderCloud(wordClouds.neutral, 'cloud-neutral');
+    }, 100);
+  }, [wordClouds]);
 
-  if (!stats || stats.total === 0) {
-    return (
-      <div className="dashboard-empty">
-        <h2>📊 No hay respuestas aún</h2>
-        <p>Comparte la encuesta para comenzar a recopilar datos.</p>
-      </div>
-    );
-  }
+  // Función renderCloud (sin hooks, solo lógica)
+  const renderCloud = (words: WordCount[], containerId: string) => {
+    if (!words || words.length === 0) return;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
 
-  const avgLabels = [
-    'Atención Admin.',
-    'Comunicación Admin.',
-    'Agendamiento',
-    'Dominio del Tema',
-    'Claridad del Profesor',
-    'Participación',
-    'Mejora en Habilidades',
-    'Interés en Tecnología',
-    'Utilidad de Proyectos',
-  ];
-  const avgValues = [
-    stats.averages.adminAttention,
-    stats.averages.adminCommunication,
-    stats.averages.adminScheduling,
-    stats.averages.teacherKnowledge,
-    stats.averages.teacherClarity,
-    stats.averages.teacherEngagement,
-    stats.averages.improvementSkills,
-    stats.averages.interestTech,
-    stats.averages.projectsUseful,
-  ];
+    const layout = WordCloud()
+      .size([300, 200])
+      .words(words)
+      .padding(2)
+      .rotate(0)
+      .font('Poppins')
+      .fontSize((d: any) => (d.value / 5) * 20 + 10)
+      .on('end', (drawn: any) => {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', '100%');
+        svg.setAttribute('viewBox', `0 0 ${layout.size()[0]} ${layout.size()[1]}`);
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('transform', 'translate(0, 0)');
+        drawn.forEach((word: any) => {
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('font-family', word.font);
+          text.setAttribute('font-size', `${word.size}px`);
+          text.setAttribute('fill', word.color || '#333');
+          text.setAttribute('text-anchor', 'middle');
+          text.setAttribute('transform', `translate(${word.x + 150}, ${word.y + 100})`);
+          text.textContent = word.text;
+          g.appendChild(text);
+        });
+        svg.appendChild(g);
+        container.appendChild(svg);
+      });
 
-  const barData = {
-    labels: avgLabels,
-    datasets: [
-      {
-        label: 'Promedio (1-5)',
-        data: avgValues,
-        backgroundColor: 'rgba(38, 170, 163, 0.6)',
-        borderColor: '#26AAA3',
-        borderWidth: 2,
-      },
-    ],
+    layout.start();
   };
 
-  const npsData = {
-    labels: ['Promotores (9-10)', 'Pasivos (7-8)', 'Detractores (0-6)'],
-    datasets: [
-      {
-        data: [stats.promoters, stats.passives, stats.detractors],
-        backgroundColor: ['#67A934', '#F8B50E', '#D61A1F'],
-        borderColor: '#ffffff',
-        borderWidth: 2,
-      },
-    ],
-  };
+  // ✅ Retornos condicionales (después de todos los hooks)
+  if (loading) return <div className="sentiment-loading">Analizando sentimientos...</div>;
+  if (error) return <div className="sentiment-error">{error}</div>;
+  if (!sentiments) return <div className="sentiment-empty">No hay datos de sentimiento.</div>;
 
-  const ageLabels = Object.keys(stats.ageDistribution);
-  const ageValues = Object.values(stats.ageDistribution);
-  const ageChartData = {
-    labels: ageLabels,
-    datasets: [
-      {
-        label: 'Respuestas por Edad',
-        data: ageValues,
-        backgroundColor: 'rgba(214, 26, 31, 0.6)',
-        borderColor: '#D61A1F',
-        borderWidth: 2,
-      },
-    ],
+  const chartData = {
+    labels: ['Positivos', 'Negativos', 'Neutrales'],
+    datasets: [{
+      data: [sentiments.positive, sentiments.negative, sentiments.neutral],
+      backgroundColor: ['#67A934', '#D61A1F', '#F8B50E'],
+      borderColor: '#ffffff',
+      borderWidth: 2,
+    }],
   };
 
   return (
-    <motion.div 
-      className="dashboard-container"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <header className="dashboard-header">
-        <h1>📊 Panel de Control</h1>
-        <p>Estadísticas de la encuesta de satisfacción</p>
-      </header>
-
-      <div className="summary-cards">
-        <motion.div className="card" whileHover={{ scale: 1.02 }}>
-          <h3>Total de Respuestas</h3>
-          <p className="card-number">{stats.total}</p>
-        </motion.div>
-        <motion.div className="card" whileHover={{ scale: 1.02 }}>
-          <h3>NPS</h3>
-          <p className="card-number" style={{ color: stats.nps >= 50 ? '#67A934' : stats.nps >= 0 ? '#F8B50E' : '#D61A1F' }}>
-            {stats.nps}
-          </p>
-        </motion.div>
-        <motion.div className="card" whileHover={{ scale: 1.02 }}>
-          <h3>Promotores</h3>
-          <p className="card-number" style={{ color: '#67A934' }}>{stats.promoters}</p>
-        </motion.div>
-        <motion.div className="card" whileHover={{ scale: 1.02 }}>
-          <h3>Detractores</h3>
-          <p className="card-number" style={{ color: '#D61A1F' }}>{stats.detractors}</p>
-        </motion.div>
+    <div className="sentiment-container">
+      <h2>💬 Análisis de Sentimiento</h2>
+      <div className="sentiment-chart">
+        <Bar data={chartData} options={{ plugins: { legend: { display: true } } }} />
       </div>
-
-      <div className="charts-grid">
-        <div className="chart-card">
-          <h3>Promedios por Sección</h3>
-          <Bar data={barData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
+      <div className="sentiment-clouds">
+        <div className="cloud-card">
+          <h3>😊 Positivo</h3>
+          <div id="cloud-positive" className="word-cloud"></div>
         </div>
-        <div className="chart-card">
-          <h3>Distribución NPS</h3>
-          <Doughnut data={npsData} options={{ responsive: true }} />
+        <div className="cloud-card">
+          <h3>😠 Negativo</h3>
+          <div id="cloud-negative" className="word-cloud"></div>
         </div>
-        <div className="chart-card">
-          <h3>Respuestas por Edad</h3>
-          <Bar data={ageChartData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
-        </div>
-        <div className="chart-card">
-          <h3>Tipo de Encuestado</h3>
-          <Doughnut 
-            data={{
-              labels: Object.keys(stats.respondentTypeDistribution),
-              datasets: [{
-                data: Object.values(stats.respondentTypeDistribution),
-                backgroundColor: ['#26AAA3', '#F8B50E', '#D61A1F'],
-                borderColor: '#ffffff',
-                borderWidth: 2,
-              }],
-            }} 
-            options={{ responsive: true }} 
-          />
+        <div className="cloud-card">
+          <h3>😐 Neutral</h3>
+          <div id="cloud-neutral" className="word-cloud"></div>
         </div>
       </div>
-
-      <div className="recent-table">
-        <h3>Últimas Respuestas</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>NPS</th>
-              <th>Tipo</th>
-              <th>Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.recentResponses.map((resp) => (
-              <tr key={resp.id}>
-                <td>{resp.studentName}</td>
-                <td>{resp.npsScore}</td>
-                <td>{resp.respondentType}</td>
-                <td>{new Date(resp.createdAt).toLocaleDateString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Análisis de comentarios (gráficos de barras) */}
-      <CommentsAnalysis />
-
-      {/* ✅ Nuevo análisis de sentimiento (nubes de palabras) */}
-      <SentimentAnalysis />
-    </motion.div>
+    </div>
   );
 };
 
-export default Dashboard;
+export default SentimentAnalysis;

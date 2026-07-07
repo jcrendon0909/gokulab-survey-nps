@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import WordCloud from 'react-wordcloud';
+import WordCloud from 'wordcloud2';
 import { removeStopwords } from 'stopword';
 import './CommentsAnalysis.css';
 
@@ -26,6 +26,7 @@ const CommentsAnalysis: React.FC = () => {
     const fetchComments = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_URL || '';
+        console.log('🔍 API_URL en Comments:', API_URL);
         const response = await axios.get(`${API_URL}/api/survey/comments`);
         const comments: Comment[] = response.data.comments;
 
@@ -59,19 +60,52 @@ const CommentsAnalysis: React.FC = () => {
       freq[word] = (freq[word] || 0) + 1;
     });
 
-    const result = Object.entries(freq)
+    return Object.entries(freq)
       .map(([text, value]) => ({ text, value }))
-      .sort((a, b) => b.value - a.value);
-
-    return result.slice(0, 50);
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 50);
   };
 
-  const options = {
-    rotations: 2,
-    rotationAngles: [-90, 0],
-    fontSizes: [14, 50],
-    colors: ['#26AAA3', '#67A934', '#D61A1F', '#F8B50E', '#2c3e50'],
+  // Función para renderizar la nube de palabras
+  const renderWordCloud = (words: Word[], containerId: string) => {
+    if (words.length === 0) return;
+    
+    setTimeout(() => {
+      const container = document.getElementById(containerId);
+      if (container) {
+        // Limpiar el contenedor
+        container.innerHTML = '';
+        
+        // Configurar la nube
+        WordCloud(container, {
+          list: words.map(w => [w.text, w.value]),
+          gridSize: 8,
+          weightFactor: (w: number) => w * 8,
+          fontFamily: 'Poppins, sans-serif',
+          color: (word: string, weight: number) => {
+            const colors = ['#26AAA3', '#67A934', '#D61A1F', '#F8B50E', '#2c3e50'];
+            return colors[Math.floor(Math.random() * colors.length)];
+          },
+          rotateRatio: 0.5,
+          minRotation: -Math.PI / 6,
+          maxRotation: Math.PI / 6,
+        });
+      }
+    }, 100);
   };
+
+  // Efecto para renderizar las nubes cuando cambian los datos
+  useEffect(() => {
+    if (likesWords.length > 0) renderWordCloud(likesWords, 'cloud-likes');
+  }, [likesWords]);
+
+  useEffect(() => {
+    if (improvementsWords.length > 0) renderWordCloud(improvementsWords, 'cloud-improvements');
+  }, [improvementsWords]);
+
+  useEffect(() => {
+    if (additionalWords.length > 0) renderWordCloud(additionalWords, 'cloud-additional');
+  }, [additionalWords]);
 
   if (loading) return <div className="comments-loading">Cargando comentarios...</div>;
   if (error) return <div className="comments-error">{error}</div>;
@@ -84,29 +118,20 @@ const CommentsAnalysis: React.FC = () => {
       <div className="clouds-grid">
         <div className="cloud-card">
           <h3>¿Qué te gusta más de GokuLab?</h3>
-          {likesWords.length > 0 ? (
-            <WordCloud words={likesWords} options={options} />
-          ) : (
-            <p className="no-data">No hay comentarios aún.</p>
-          )}
+          <div id="cloud-likes" className="word-cloud-container"></div>
+          {likesWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
         </div>
 
         <div className="cloud-card">
           <h3>¿Qué recomendarías mejorar?</h3>
-          {improvementsWords.length > 0 ? (
-            <WordCloud words={improvementsWords} options={options} />
-          ) : (
-            <p className="no-data">No hay comentarios aún.</p>
-          )}
+          <div id="cloud-improvements" className="word-cloud-container"></div>
+          {improvementsWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
         </div>
 
         <div className="cloud-card">
           <h3>Comentarios adicionales</h3>
-          {additionalWords.length > 0 ? (
-            <WordCloud words={additionalWords} options={options} />
-          ) : (
-            <p className="no-data">No hay comentarios aún.</p>
-          )}
+          <div id="cloud-additional" className="word-cloud-container"></div>
+          {additionalWords.length === 0 && <p className="no-data">No hay comentarios aún.</p>}
         </div>
       </div>
     </div>

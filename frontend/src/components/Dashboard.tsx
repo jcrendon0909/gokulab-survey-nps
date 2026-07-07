@@ -1,19 +1,4 @@
-import CommentsAnalysis from './CommentsAnalysis';
-import SentimentAnalysis from './SentimentAnalysis';
-import ErrorBoundary from './ErrorBoundary';
-
-// ... dentro del return
-<div className="recent-table">
-  {/* ... */}
-</div>
-
-{/* Análisis de comentarios (gráficos de barras) */}
-<CommentsAnalysis />
-
-{/* Análisis de sentimiento (envuelto en ErrorBoundary) */}
-<ErrorBoundary>
-  <SentimentAnalysis />
-</ErrorBoundary>import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import {

@@ -133,3 +133,4 @@ Después de hacer estos cambios:
 | 4 | Desplegar backend | Render |
 | 5 | Desplegar frontend | Cloudflare Pages |
 | 6 | Probar en producción | Navegador |
+ 

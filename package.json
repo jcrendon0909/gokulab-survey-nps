@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "react-wordcloud": "^1.2.7",
+    "stopword": "^3.1.5"
+  }
+}

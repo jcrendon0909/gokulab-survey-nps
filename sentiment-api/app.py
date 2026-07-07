@@ -1,79 +1,71 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from textblob import TextBlob
+from pysentimiento import SentimentAnalyzer
 from collections import Counter
 import re
 
 app = Flask(__name__)
 CORS(app)
 
-# Palabras vacías en español (ampliables)
-STOPWORDS = {
-    'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque',
-    'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde',
-    'durante', 'según', 'mediante', 'versus', 'vía', 'si', 'no', 'ni', 'ya', 'muy',
-    'más', 'menos', 'así', 'cuando', 'donde', 'cómo', 'quién', 'qué', 'quien', 'cual'
-}
+analyzer = SentimentAnalyzer(lang="es")
+
+# Palabras vacías básicas (opcional, pero ayuda a limpiar)
+STOPWORDS = {'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'durante', 'según', 'mediante', 'versus', 'vía', 'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'nuestro', 'nuestra', 'nuestros', 'nuestras', 'vuestro', 'vuestra', 'vuestros', 'vuestras'}
 
 def clean_text(text):
-    """Limpia el texto: minúsculas, elimina puntuación y stopwords."""
     text = text.lower()
-    text = re.sub(r'[^\w\s]', '', text)  # elimina puntuación
+    text = re.sub(r'[^\w\s]', '', text)
     words = text.split()
     words = [w for w in words if w not in STOPWORDS and len(w) > 2]
     return ' '.join(words)
 
-def analyze_sentiment(text):
-    """Clasifica el sentimiento del texto usando TextBlob."""
-    blob = TextBlob(text)
-    polarity = blob.sentiment.polarity  # -1 a +1
-    print(f"🔎 Texto: '{text}' -> Polaridad: {polarity}")  # LOG para depurar
-    if polarity > 0.05:
-        return 'positive'
-    elif polarity < -0.05:
-        return 'negative'
-    else:
-        return 'neutral'
-
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    data = request.get_json()
-    if not data or 'comments' not in data:
+    data = request.json
+    comments = data.get('comments', [])
+    if not comments:
         return jsonify({'error': 'No comments provided'}), 400
 
-    comments = data['comments']
-    # Filtrar comentarios vacíos o muy cortos
-    comments = [c for c in comments if c and len(c.strip()) > 2]
-
-    if not comments:
-        return jsonify({'error': 'No valid comments'}), 400
-
-    # Procesar cada comentario
+    results = []
     sentiments = {'positive': [], 'negative': [], 'neutral': []}
     for text in comments:
+        if not text or len(text) < 3:
+            continue
         cleaned = clean_text(text)
         if not cleaned:
             continue
-        sentiment = analyze_sentiment(cleaned)
-        sentiments[sentiment].append(cleaned)
+        # Analizar sentimiento con pysentimiento
+        result = analyzer.predict(cleaned)
+        sentiment = result.output  # 'POS', 'NEG' o 'NEU'
+        # Mapear a nuestro formato
+        if sentiment == 'POS':
+            label = 'positive'
+        elif sentiment == 'NEG':
+            label = 'negative'
+        else:
+            label = 'neutral'
+        results.append({'text': text, 'sentiment': label})
+        sentiments[label].append(cleaned)
 
-    # Contar totales
-    total = {
-        'positive': len(sentiments['positive']),
-        'negative': len(sentiments['negative']),
-        'neutral': len(sentiments['neutral'])
-    }
-
-    # Palabras más frecuentes por sentimiento
+    # Contar palabras por sentimiento
     word_counts = {}
     for sent, texts in sentiments.items():
         all_words = ' '.join(texts).split()
         word_counts[sent] = Counter(all_words).most_common(20)
 
     return jsonify({
-        'sentiments': total,
-        'word_counts': word_counts
+        'sentiments': {
+            'positive': len(sentiments['positive']),
+            'negative': len(sentiments['negative']),
+            'neutral': len(sentiments['neutral'])
+        },
+        'word_counts': word_counts,
+        'details': results
     })
 
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok'})
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002, debug=True)
+    app.run(port=5002, debug=True)

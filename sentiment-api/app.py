@@ -1,12 +1,20 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from textblob import TextBlob
+from transformers import pipeline
 from collections import Counter
 import re
 import os
 
 app = Flask(__name__)
 CORS(app)
+
+# Modelo liviano para análisis de sentimiento en español
+sentiment_pipeline = pipeline(
+    "sentiment-analysis",
+    model="cardiffnlp/twitter-xlm-roberta-base-sentiment",
+    device=-1,
+    model_kwargs={'low_cpu_mem_usage': True}
+)
 
 STOPWORDS = {'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'durante', 'según', 'mediante', 'versus', 'vía', 'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'nuestro', 'nuestra', 'nuestros', 'nuestras', 'vuestro', 'vuestra', 'vuestros', 'vuestras'}
 
@@ -32,12 +40,12 @@ def analyze():
         cleaned = clean_text(text)
         if not cleaned:
             continue
-        blob = TextBlob(cleaned)
-        polarity = blob.sentiment.polarity
-        # Umbrales más sensibles para español (textos cortos)
-        if polarity > 0.05:
+        result = sentiment_pipeline(cleaned)[0]
+        label = result['label']  # 'LABEL_1' (positivo) o 'LABEL_2' (negativo) para este modelo
+        # Mapear
+        if label == 'LABEL_1':
             sentiment = 'positive'
-        elif polarity < -0.05:
+        elif label == 'LABEL_0':
             sentiment = 'negative'
         else:
             sentiment = 'neutral'

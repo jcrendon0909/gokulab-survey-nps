@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios'); // ✅ IMPORTANTE: para llamar a Hugging Face
 const Survey = require('../models/SurveyResponse');
 
 const router = express.Router();
@@ -113,13 +114,63 @@ router.get('/survey/stats', async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT CORRECTO: GET /api/survey/comments (ESTÁ FUERA DEL BLOQUE ANTERIOR)
+// GET /api/survey/comments - Obtener comentarios
 router.get('/survey/comments', async (req, res) => {
   try {
     const responses = await Survey.find({}, 'likes improvements additionalComments');
     res.json({ comments: responses });
   } catch (error) {
     console.error('Error fetching comments:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ NUEVO ENDPOINT: Análisis de sentimiento con Hugging Face API
+router.post('/analyze-sentiment', async (req, res) => {
+  try {
+    const { comments } = req.body;
+    if (!comments || comments.length === 0) {
+      return res.status(400).json({ error: 'No comments provided' });
+    }
+
+    const HF_TOKEN = process.env.HF_TOKEN;
+    if (!HF_TOKEN) {
+      console.error('❌ HF_TOKEN no configurado en variables de entorno');
+      return res.status(500).json({ error: 'HF_TOKEN not configured' });
+    }
+
+    console.log(`📤 Analizando ${comments.length} comentarios con Hugging Face...`);
+
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/cardiffnlp/twitter-xlm-roberta-base-sentiment',
+      { inputs: comments },
+      { 
+        headers: { 
+          Authorization: `Bearer ${HF_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000 // 30 segundos
+      }
+    );
+
+    const results = response.data;
+    console.log('📥 Respuesta de Hugging Face:', JSON.stringify(results, null, 2));
+
+    // Mapeo correcto para este modelo:
+    // LABEL_0 = negativo, LABEL_1 = neutral, LABEL_2 = positivo
+    const sentiments = results.map((r: any) => {
+      const label = r[0]?.label;
+      if (label === 'LABEL_2') return 'positive';
+      if (label === 'LABEL_0') return 'negative';
+      return 'neutral'; // LABEL_1 u otros
+    });
+
+    res.json({ sentiments });
+  } catch (error) {
+    console.error('❌ Error en análisis de sentimiento:', error.message);
+    if (error.response) {
+      console.error('📄 Respuesta de Hugging Face:', error.response.data);
+    }
     res.status(500).json({ error: error.message });
   }
 });

@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import WordCloud from 'd3-cloud';
 import './SentimentAnalysis.css';
 
@@ -13,37 +21,65 @@ interface WordCount {
 }
 
 const SentimentAnalysis: React.FC = () => {
-  // ✅ 1. TODOS LOS HOOKS PRIMERO (sin condiciones)
   const [sentiments, setSentiments] = useState<{ positive: number; negative: number; neutral: number } | null>(null);
   const [wordClouds, setWordClouds] = useState<{ positive: WordCount[]; negative: WordCount[]; neutral: WordCount[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ 2. useEffect para obtener datos
   useEffect(() => {
     const fetchSentiment = async () => {
       try {
+        // 1. Obtener comentarios del backend Node.js
         const API_URL = import.meta.env.VITE_API_URL || '';
         const response = await axios.get(`${API_URL}/api/survey/comments`);
         const comments = response.data.comments
           .map((c: any) => [c.likes, c.improvements, c.additionalComments])
           .flat()
-          .filter(Boolean);
+          .filter((text: string) => text && text.trim().length > 0);
+
         if (comments.length === 0) {
           setError('No hay comentarios para analizar.');
           setLoading(false);
           return;
         }
 
-        const SENTIMENT_URL = import.meta.env.VITE_SENTIMENT_API_URL || '';
-        const result = await axios.post(`${SENTIMENT_URL}/analyze`, { comments });
+        // 2. Llamar al nuevo endpoint del backend Node.js
+        const sentimentResponse = await axios.post(`${API_URL}/api/analyze-sentiment`, { comments });
+        const sentimentLabels = sentimentResponse.data.sentiments;
 
-        setSentiments(result.data.sentiments);
-        const wc: any = {};
-        for (const [sent, words] of Object.entries(result.data.word_counts)) {
-          wc[sent] = (words as any[]).map(([text, value]) => ({ text, value }));
+        // 3. Contar sentimientos
+        const counts = { positive: 0, negative: 0, neutral: 0 };
+        sentimentLabels.forEach((label: string) => {
+          if (label === 'positive') counts.positive++;
+          else if (label === 'negative') counts.negative++;
+          else counts.neutral++;
+        });
+        setSentiments(counts);
+
+        // 4. Generar nubes de palabras por sentimiento
+        const wc: any = { positive: [], negative: [], neutral: [] };
+        comments.forEach((text: string, index: number) => {
+          const label = sentimentLabels[index] || 'neutral';
+          const words = text.toLowerCase().match(/[a-záéíóúñü0-9]+/g) || [];
+          words.forEach((word: string) => {
+            if (word.length < 3) return;
+            // Evitar stopwords básicas (opcional)
+            const stopwords = ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'durante', 'según', 'mediante', 'versus', 'vía'];
+            if (stopwords.includes(word)) return;
+            // Buscar o agregar palabra
+            const existing = wc[label].find((w: any) => w.text === word);
+            if (existing) existing.value++;
+            else wc[label].push({ text: word, value: 1 });
+          });
+        });
+
+        // Ordenar y tomar top 20 por sentimiento
+        for (const key in wc) {
+          wc[key].sort((a: WordCount, b: WordCount) => b.value - a.value);
+          wc[key] = wc[key].slice(0, 20);
         }
         setWordClouds(wc);
+
       } catch (err) {
         console.error('Error en análisis de sentimiento:', err);
         setError('No se pudo cargar el análisis de sentimiento.');
@@ -51,24 +87,27 @@ const SentimentAnalysis: React.FC = () => {
         setLoading(false);
       }
     };
+
     fetchSentiment();
   }, []);
 
-  // ✅ 3. useEffect para renderizar nubes (SIEMPRE se ejecuta, pero con verificación interna)
+  // Renderizar nubes con d3-cloud
   useEffect(() => {
     if (!wordClouds) return;
     setTimeout(() => {
       renderCloud(wordClouds.positive, 'cloud-positive');
       renderCloud(wordClouds.negative, 'cloud-negative');
       renderCloud(wordClouds.neutral, 'cloud-neutral');
-    }, 100);
+    }, 300);
   }, [wordClouds]);
 
-  // ✅ 4. Función renderCloud (sin hooks)
   const renderCloud = (words: WordCount[], containerId: string) => {
-    if (!words || words.length === 0) return;
     const container = document.getElementById(containerId);
     if (!container) return;
+    if (!words || words.length === 0) {
+      container.innerHTML = '<p class="no-words">No hay palabras.</p>';
+      return;
+    }
     container.innerHTML = '';
 
     const layout = WordCloud()
@@ -77,7 +116,7 @@ const SentimentAnalysis: React.FC = () => {
       .padding(2)
       .rotate(0)
       .font('Poppins')
-      .fontSize((d: any) => (d.value / 5) * 20 + 10)
+      .fontSize((d: any) => (d.value / 2) * 15 + 10)
       .on('end', (drawn: any) => {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', '100%');
@@ -102,7 +141,6 @@ const SentimentAnalysis: React.FC = () => {
     layout.start();
   };
 
-  // ✅ 5. RETORNOS CONDICIONALES (después de todos los hooks)
   if (loading) return <div className="sentiment-loading">Analizando sentimientos...</div>;
   if (error) return <div className="sentiment-error">{error}</div>;
   if (!sentiments) return <div className="sentiment-empty">No hay datos de sentimiento.</div>;

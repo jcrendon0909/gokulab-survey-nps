@@ -43,11 +43,41 @@ const SentimentAnalysis: React.FC = () => {
           return;
         }
 
-        // 2. Llamar al nuevo endpoint del backend Node.js
-        const sentimentResponse = await axios.post(`${API_URL}/api/analyze-sentiment`, { comments });
-        const sentimentLabels = sentimentResponse.data.sentiments;
+        // 2. Llamar directamente a Hugging Face API desde el frontend
+        const HF_TOKEN = import.meta.env.VITE_HF_TOKEN;
+        if (!HF_TOKEN) {
+          setError('HF_TOKEN no configurado. Agrégalo en Cloudflare Pages (VITE_HF_TOKEN).');
+          setLoading(false);
+          return;
+        }
 
-        // 3. Contar sentimientos
+        console.log(`📤 Analizando ${comments.length} comentarios con Hugging Face...`);
+
+        const hfResponse = await axios.post(
+          'https://api-inference.huggingface.co/models/cardiffnlp/twitter-xlm-roberta-base-sentiment',
+          { inputs: comments },
+          {
+            headers: {
+              Authorization: `Bearer ${HF_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 30000, // 30 segundos
+          }
+        );
+
+        const results = hfResponse.data;
+        console.log('📥 Respuesta de Hugging Face:', JSON.stringify(results, null, 2));
+
+        // 3. Procesar resultados (mapeo de etiquetas)
+        // LABEL_0 = negativo, LABEL_1 = neutral, LABEL_2 = positivo
+        const sentimentLabels = results.map((r: any) => {
+          const label = r[0]?.label;
+          if (label === 'LABEL_2') return 'positive';
+          if (label === 'LABEL_0') return 'negative';
+          return 'neutral';
+        });
+
+        // 4. Contar sentimientos
         const counts = { positive: 0, negative: 0, neutral: 0 };
         sentimentLabels.forEach((label: string) => {
           if (label === 'positive') counts.positive++;
@@ -56,15 +86,15 @@ const SentimentAnalysis: React.FC = () => {
         });
         setSentiments(counts);
 
-        // 4. Generar nubes de palabras por sentimiento
+        // 5. Generar nubes de palabras por sentimiento
         const wc: any = { positive: [], negative: [], neutral: [] };
         comments.forEach((text: string, index: number) => {
           const label = sentimentLabels[index] || 'neutral';
           const words = text.toLowerCase().match(/[a-záéíóúñü0-9]+/g) || [];
           words.forEach((word: string) => {
             if (word.length < 3) return;
-            // Evitar stopwords básicas (opcional)
-            const stopwords = ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'durante', 'según', 'mediante', 'versus', 'vía'];
+            // Stopwords básicas en español
+            const stopwords = ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'durante', 'según', 'mediante', 'versus', 'vía', 'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'nuestro', 'nuestra', 'nuestros', 'nuestras', 'vuestro', 'vuestra', 'vuestros', 'vuestras'];
             if (stopwords.includes(word)) return;
             // Buscar o agregar palabra
             const existing = wc[label].find((w: any) => w.text === word);
@@ -80,9 +110,12 @@ const SentimentAnalysis: React.FC = () => {
         }
         setWordClouds(wc);
 
-      } catch (err) {
-        console.error('Error en análisis de sentimiento:', err);
-        setError('No se pudo cargar el análisis de sentimiento.');
+      } catch (err: any) {
+        console.error('❌ Error en análisis de sentimiento:', err);
+        if (err.response) {
+          console.error('📄 Respuesta de Hugging Face:', err.response.data);
+        }
+        setError('No se pudo cargar el análisis de sentimiento. Verifica la consola.');
       } finally {
         setLoading(false);
       }

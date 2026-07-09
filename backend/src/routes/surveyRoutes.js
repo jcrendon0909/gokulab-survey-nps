@@ -1,130 +1,3 @@
-const express = require('express');
-const axios = require('axios'); // ✅ IMPORTANTE: para llamar a Hugging Face
-const Survey = require('../models/SurveyResponse');
-
-const router = express.Router();
-
-// POST /api/survey - Guardar encuesta
-router.post('/survey', async (req, res) => {
-  console.log('📨 Recibida petición POST /survey con datos:', req.body);
-  try {
-    const newSurvey = new Survey(req.body);
-    const saved = await newSurvey.save();
-    console.log('✅ Encuesta guardada:', saved._id);
-    res.status(201).json({ success: true, id: saved._id });
-  } catch (error) {
-    console.error('❌ Error al guardar:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/survey/stats - Estadísticas completas
-router.get('/survey/stats', async (req, res) => {
-  try {
-    const responses = await Survey.find({});
-    const total = responses.length;
-
-    if (total === 0) {
-      return res.json({
-        total: 0,
-        nps: 0,
-        promoters: 0,
-        passives: 0,
-        detractors: 0,
-        averages: {
-          adminAttention: 0,
-          adminCommunication: 0,
-          adminScheduling: 0,
-          teacherKnowledge: 0,
-          teacherClarity: 0,
-          teacherEngagement: 0,
-          improvementSkills: 0,
-          interestTech: 0,
-          projectsUseful: 0,
-        },
-        ageDistribution: {},
-        respondentTypeDistribution: {},
-        recentResponses: [],
-      });
-    }
-
-    let promoters = 0, passives = 0, detractors = 0;
-    const sums = {
-      adminAttention: 0,
-      adminCommunication: 0,
-      adminScheduling: 0,
-      teacherKnowledge: 0,
-      teacherClarity: 0,
-      teacherEngagement: 0,
-      improvementSkills: 0,
-      interestTech: 0,
-      projectsUseful: 0,
-    };
-    const ageCounts = {};
-    const respondentCounts = {};
-
-    responses.forEach(r => {
-      if (r.npsScore >= 9) promoters++;
-      else if (r.npsScore >= 7) passives++;
-      else detractors++;
-
-      for (const key in sums) {
-        sums[key] += r[key] || 0;
-      }
-
-      const age = r.studentAgeRange || 'No especificado';
-      ageCounts[age] = (ageCounts[age] || 0) + 1;
-
-      const type = r.respondentType || 'No especificado';
-      respondentCounts[type] = (respondentCounts[type] || 0) + 1;
-    });
-
-    const nps = Math.round(((promoters - detractors) / total) * 100);
-
-    const averages = {};
-    for (const key in sums) {
-      averages[key] = parseFloat((sums[key] / total).toFixed(2));
-    }
-
-    const recentResponses = responses
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, 5)
-      .map(r => ({
-        id: r._id,
-        studentName: r.studentName || 'Anónimo',
-        npsScore: r.npsScore,
-        respondentType: r.respondentType || 'No especificado',
-        createdAt: r.createdAt,
-      }));
-
-    res.json({
-      total,
-      nps,
-      promoters,
-      passives,
-      detractors,
-      averages,
-      ageDistribution: ageCounts,
-      respondentTypeDistribution: respondentCounts,
-      recentResponses,
-    });
-  } catch (error) {
-    console.error('Error en stats:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/survey/comments - Obtener comentarios
-router.get('/survey/comments', async (req, res) => {
-  try {
-    const responses = await Survey.find({}, 'likes improvements additionalComments');
-    res.json({ comments: responses });
-  } catch (error) {
-    console.error('Error fetching comments:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // ✅ NUEVO ENDPOINT: Análisis de sentimiento con Hugging Face API
 router.post('/analyze-sentiment', async (req, res) => {
   try {
@@ -149,20 +22,19 @@ router.post('/analyze-sentiment', async (req, res) => {
           Authorization: `Bearer ${HF_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        timeout: 30000 // 30 segundos
+        timeout: 30000
       }
     );
 
     const results = response.data;
     console.log('📥 Respuesta de Hugging Face:', JSON.stringify(results, null, 2));
 
-    // Mapeo correcto para este modelo:
-    // LABEL_0 = negativo, LABEL_1 = neutral, LABEL_2 = positivo
-    const sentiments = results.map((r: any) => {
+    // ✅ CORRECCIÓN: Eliminar la anotación de tipo `: any`
+    const sentiments = results.map((r) => {
       const label = r[0]?.label;
       if (label === 'LABEL_2') return 'positive';
       if (label === 'LABEL_0') return 'negative';
-      return 'neutral'; // LABEL_1 u otros
+      return 'neutral';
     });
 
     res.json({ sentiments });
@@ -174,5 +46,3 @@ router.post('/analyze-sentiment', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-module.exports = router;

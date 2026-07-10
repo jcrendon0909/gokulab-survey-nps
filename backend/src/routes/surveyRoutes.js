@@ -5,12 +5,22 @@ const { NlpManager } = require('node-nlp');
 const router = express.Router();
 
 // =============================================
-// 1. CONFIGURACIÓN DEL MODELO node-nlp (entrenamiento)
+// 1. CONFIGURACIÓN DEL MODELO node-nlp
 // =============================================
 const manager = new NlpManager({ languages: ['es'] });
+let modelReady = false;
 
-// Entrenamiento (frases de ejemplo)
-(async () => {
+// =============================================
+// 2. FUNCIÓN DE ENTRENAMIENTO (se ejecutará después de arrancar el servidor)
+// =============================================
+async function trainModel() {
+  if (modelReady) {
+    console.log('✅ Modelo ya entrenado, omitiendo...');
+    return;
+  }
+
+  console.log('🧠 Entrenando modelo de sentimiento (esto puede tomar unos segundos)...');
+
   // --- FRASES POSITIVAS ---
   manager.addDocument('es', 'me encanta este lugar', 'positive');
   manager.addDocument('es', 'es increíble', 'positive');
@@ -155,11 +165,12 @@ const manager = new NlpManager({ languages: ['es'] });
   manager.addDocument('es', 'normalazo', 'neutral');
 
   await manager.train();
-  console.log('✅ Modelo node-nlp entrenado');
-})();
+  modelReady = true;
+  console.log('✅ Modelo de sentimiento entrenado correctamente');
+}
 
 // =============================================
-// 2. STOPWORDS
+// 3. STOPWORDS Y DICCIONARIOS (para clasificación híbrida)
 // =============================================
 const STOPWORDS = [
   'a', 'al', 'ante', 'antes', 'con', 'contra', 'de', 'del', 'desde', 'durante',
@@ -179,9 +190,6 @@ const STOPWORDS = [
   'hijo', 'hija', 'padre', 'madre', 'clase', 'clases', 'lugar', 'sitio'
 ];
 
-// =============================================
-// 3. DICCIONARIOS DE SENTIMIENTOS
-// =============================================
 const POSITIVE_WORDS = [
   'excelente', 'increíble', 'maravilloso', 'feliz', 'encanta', 'genial',
   'fantástico', 'espectacular', 'perfecto', 'mejor', 'recomendado', 'satisfecho',
@@ -210,9 +218,6 @@ const NEUTRAL_PHRASES = [
   'sin más', 'aceptable', 'no está mal', 'pasable', 'bueno'
 ];
 
-// =============================================
-// 4. FUNCIONES DE CLASIFICACIÓN DE SENTIMIENTO
-// =============================================
 function cleanText(text) {
   let clean = text.toLowerCase()
     .replace(/[^a-záéíóúñü\s]/g, ' ')
@@ -271,7 +276,7 @@ async function classifySentiment(text) {
 }
 
 // =============================================
-// 5. RUTAS DE LA API
+// 4. RUTAS DE LA API
 // =============================================
 
 // POST /api/survey - Guardar encuesta
@@ -395,7 +400,7 @@ router.get('/survey/comments', async (req, res) => {
   }
 });
 
-// POST /api/analyze-sentiment - Análisis de sentimiento con NLP local
+// POST /api/analyze-sentiment - Análisis de sentimiento
 router.post('/analyze-sentiment', async (req, res) => {
   try {
     const { comments } = req.body;
@@ -420,4 +425,10 @@ router.post('/analyze-sentiment', async (req, res) => {
   }
 });
 
-module.exports = router;
+// =============================================
+// 5. EXPORTAR ROUTER Y FUNCIÓN DE ENTRENAMIENTO
+// =============================================
+module.exports = {
+  router,
+  trainModel
+};

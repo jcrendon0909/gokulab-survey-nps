@@ -1,34 +1,35 @@
-console.log('🔥 Iniciando index.js (CommonJS)...');
-
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('../config/db');
-const surveyRoutes = require('./routes/surveyRoutes');
+const { router: surveyRoutes, trainModel } = require('./routes/surveyRoutes');
 
-(async () => {
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5002;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Rutas
+app.use('/api', surveyRoutes);
+
+// Conectar a MongoDB y arrancar servidor
+connectDB().then(async () => {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  });
+
+  // Entrenar modelo de sentimiento en segundo plano (no bloquea el servidor)
   try {
-    console.log('📦 Cargando variables de entorno...');
-    dotenv.config();
-    console.log('✅ Variables cargadas');
-
-    console.log('🔄 Conectando a MongoDB...');
-    await connectDB();
-    console.log('✅ Conectado a MongoDB');
-
-    const app = express();
-    const PORT = process.env.PORT || 5001;
-
-    app.use(cors());
-    app.use(express.json());
-
-    app.use('/api', surveyRoutes);
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-    });
+    await trainModel();
+    console.log('✅ Modelo de sentimiento listo para usar');
   } catch (error) {
-    console.error('❌ Error al iniciar el servidor:', error);
-    process.exit(1);
+    console.warn('⚠️ El modelo de sentimiento no se entrenó correctamente:', error.message);
   }
-})();
+}).catch(err => {
+  console.error('❌ Error conectando a MongoDB:', err);
+  process.exit(1);
+});

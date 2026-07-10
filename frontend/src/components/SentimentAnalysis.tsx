@@ -29,13 +29,15 @@ const SentimentAnalysis: React.FC = () => {
   useEffect(() => {
     const fetchSentiment = async () => {
       try {
-        // 1. Obtener comentarios del backend Node.js
         const API_URL = import.meta.env.VITE_API_URL || '';
+        console.log('🔍 API_URL en SentimentAnalysis:', API_URL);
         const response = await axios.get(`${API_URL}/api/survey/comments`);
         const comments = response.data.comments
           .map((c: any) => [c.likes, c.improvements, c.additionalComments])
           .flat()
           .filter((text: string) => text && text.trim().length > 0);
+
+        console.log('📝 Comentarios obtenidos:', comments.length);
 
         if (comments.length === 0) {
           setError('No hay comentarios para analizar.');
@@ -43,79 +45,54 @@ const SentimentAnalysis: React.FC = () => {
           return;
         }
 
-        // 2. Llamar directamente a Hugging Face API desde el frontend
-        const HF_TOKEN = import.meta.env.VITE_HF_TOKEN;
-        if (!HF_TOKEN) {
-          setError('HF_TOKEN no configurado. Agrégalo en Cloudflare Pages (VITE_HF_TOKEN).');
-          setLoading(false);
-          return;
-        }
+        console.log(`📤 Analizando ${comments.length} comentarios con NLP local...`);
+        const sentimentResponse = await axios.post(`${API_URL}/api/analyze-sentiment`, { comments });
 
-        console.log(`📤 Analizando ${comments.length} comentarios con Hugging Face...`);
-
-        const hfResponse = await axios.post(
-          'https://api-inference.huggingface.co/models/cardiffnlp/twitter-xlm-roberta-base-sentiment',
-          { inputs: comments },
-          {
-            headers: {
-              Authorization: `Bearer ${HF_TOKEN}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 30000, // 30 segundos
-          }
-        );
-
-        const results = hfResponse.data;
-        console.log('📥 Respuesta de Hugging Face:', JSON.stringify(results, null, 2));
-
-        // 3. Procesar resultados (mapeo de etiquetas)
-        // LABEL_0 = negativo, LABEL_1 = neutral, LABEL_2 = positivo
-        const sentimentLabels = results.map((r: any) => {
-          const label = r[0]?.label;
-          if (label === 'LABEL_2') return 'positive';
-          if (label === 'LABEL_0') return 'negative';
+        const rawLabels = sentimentResponse.data.sentiments;
+        const sentimentLabels = rawLabels.map((label: string) => {
+          if (label === 'positive') return 'positive';
+          if (label === 'negative') return 'negative';
           return 'neutral';
         });
 
-        // 4. Contar sentimientos
+        console.log('📥 Resultados normalizados:', sentimentLabels);
+
+        // Contar sentimientos
         const counts = { positive: 0, negative: 0, neutral: 0 };
         sentimentLabels.forEach((label: string) => {
           if (label === 'positive') counts.positive++;
           else if (label === 'negative') counts.negative++;
           else counts.neutral++;
         });
+        console.log('📊 Conteos:', counts);
         setSentiments(counts);
 
-        // 5. Generar nubes de palabras por sentimiento
+        // Generar nubes de palabras
         const wc: any = { positive: [], negative: [], neutral: [] };
         comments.forEach((text: string, index: number) => {
           const label = sentimentLabels[index] || 'neutral';
           const words = text.toLowerCase().match(/[a-záéíóúñü0-9]+/g) || [];
           words.forEach((word: string) => {
             if (word.length < 3) return;
-            // Stopwords básicas en español
             const stopwords = ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'de', 'en', 'con', 'para', 'por', 'sin', 'sobre', 'entre', 'hasta', 'desde', 'durante', 'según', 'mediante', 'versus', 'vía', 'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'nuestro', 'nuestra', 'nuestros', 'nuestras', 'vuestro', 'vuestra', 'vuestros', 'vuestras'];
             if (stopwords.includes(word)) return;
-            // Buscar o agregar palabra
             const existing = wc[label].find((w: any) => w.text === word);
             if (existing) existing.value++;
             else wc[label].push({ text: word, value: 1 });
           });
         });
 
-        // Ordenar y tomar top 20 por sentimiento
         for (const key in wc) {
           wc[key].sort((a: WordCount, b: WordCount) => b.value - a.value);
           wc[key] = wc[key].slice(0, 20);
         }
+
+        console.log('☁️ Nubes generadas:', wc);
         setWordClouds(wc);
 
       } catch (err: any) {
         console.error('❌ Error en análisis de sentimiento:', err);
-        if (err.response) {
-          console.error('📄 Respuesta de Hugging Face:', err.response.data);
-        }
-        setError('No se pudo cargar el análisis de sentimiento. Verifica la consola.');
+        setError('No se pudo cargar el análisis de sentimiento.');
       } finally {
         setLoading(false);
       }
@@ -126,53 +103,67 @@ const SentimentAnalysis: React.FC = () => {
 
   // Renderizar nubes con d3-cloud
   useEffect(() => {
-    if (!wordClouds) return;
+    if (!wordClouds) {
+      console.log('⏳ wordClouds aún no está listo');
+      return;
+    }
+    console.log('🎨 Renderizando nubes con wordClouds:', wordClouds);
     setTimeout(() => {
       renderCloud(wordClouds.positive, 'cloud-positive');
       renderCloud(wordClouds.negative, 'cloud-negative');
       renderCloud(wordClouds.neutral, 'cloud-neutral');
-    }, 300);
+    }, 500);
   }, [wordClouds]);
 
   const renderCloud = (words: WordCount[], containerId: string) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    if (!words || words.length === 0) {
-      container.innerHTML = '<p class="no-words">No hay palabras.</p>';
-      return;
-    }
-    container.innerHTML = '';
+  const container = document.getElementById(containerId);
+  console.log(`🔍 Contenedor ${containerId}:`, container);
+  if (!container) {
+    console.error(`❌ Contenedor ${containerId} no encontrado`);
+    return;
+  }
+  if (!words || words.length === 0) {
+    container.innerHTML = '<p class="no-words">No hay palabras.</p>';
+    return;
+  }
+  container.innerHTML = '';
 
-    const layout = WordCloud()
-      .size([300, 200])
-      .words(words)
-      .padding(2)
-      .rotate(0)
-      .font('Poppins')
-      .fontSize((d: any) => (d.value / 2) * 15 + 10)
-      .on('end', (drawn: any) => {
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '100%');
-        svg.setAttribute('height', '100%');
-        svg.setAttribute('viewBox', `0 0 ${layout.size()[0]} ${layout.size()[1]}`);
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('transform', 'translate(0, 0)');
-        drawn.forEach((word: any) => {
-          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          text.setAttribute('font-family', word.font);
-          text.setAttribute('font-size', `${word.size}px`);
-          text.setAttribute('fill', word.color || '#333');
-          text.setAttribute('text-anchor', 'middle');
-          text.setAttribute('transform', `translate(${word.x + 150}, ${word.y + 100})`);
-          text.textContent = word.text;
-          g.appendChild(text);
-        });
-        svg.appendChild(g);
-        container.appendChild(svg);
+  // Tamaño fijo para asegurar visibilidad
+  const width = 350;
+  const height = 250;
+
+  const layout = WordCloud()
+    .size([width, height])
+    .words(words)
+    .padding(2)
+    .rotate(0)
+    .font('Poppins')
+    .fontSize((d: any) => (d.value / 2) * 15 + 10)
+    .on('end', (drawn: any) => {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '100%');
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svg.setAttribute('style', 'display: block; background: transparent;');
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('transform', `translate(${width/2}, ${height/2})`);
+      drawn.forEach((word: any) => {
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('font-family', word.font);
+        text.setAttribute('font-size', `${word.size}px`);
+        text.setAttribute('fill', word.color || '#333');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('transform', `translate(${word.x}, ${word.y})`);
+        text.textContent = word.text;
+        g.appendChild(text);
       });
+      svg.appendChild(g);
+      container.appendChild(svg);
+      console.log(`✅ Nube ${containerId} renderizada`);
+    });
 
-    layout.start();
-  };
+  layout.start();
+};
 
   if (loading) return <div className="sentiment-loading">Analizando sentimientos...</div>;
   if (error) return <div className="sentiment-error">{error}</div>;

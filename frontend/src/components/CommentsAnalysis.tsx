@@ -10,7 +10,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import * as stopword from 'stopword';
+import { removeStopwords } from 'stopword';
+import { es } from 'stopword';
 import './CommentsAnalysis.css';
 
 ChartJS.register(
@@ -63,19 +64,34 @@ const CommentsAnalysis: React.FC = () => {
       .toLowerCase()
       .match(/[a-záéíóúñü0-9]+/g) || [];
 
-    // ✅ FORMA CORRECTA: usar stopword.removeStopwords y stopword.es
-    const filtered = stopword.removeStopwords(words, stopword.es);
+    // ✅ Filtrado más agresivo (stopwords y palabras cortas)
+    const filtered = removeStopwords(words, es);
+    const customStopwords = ['muy', 'son', 'las', 'mis', 'los', 'sus', 'tus', 'nos', 'vos', 'tan', 'más', 'menos', 'tanto', 'cuando', 'donde', 'como', 'pero', 'porque', 'sino', 'aunque', 'mientras', 'entre', 'sobre', 'bajo', 'tras', 'durante', 'según', 'vía', 'sin', 'con', 'para', 'por', 'en', 'de', 'a', 'al', 'del', 'lo', 'le', 'la', 'el', 'es', 'un', 'una', 'algo', 'alguien', 'nada', 'todo', 'cada', 'otro', 'mismo', 'si', 'no', 'sí', 'ya', 'ahora', 'luego', 'después', 'antes', 'hasta', 'siempre', 'nunca', 'jamás'];
+    const filteredWords = filtered.filter(word => 
+      word.length > 3 && 
+      !customStopwords.includes(word) &&
+      !/^\d+$/.test(word) // elimina números
+    );
 
     const freq: Record<string, number> = {};
-    filtered.forEach(word => {
-      if (word.length < 3) return;
+    filteredWords.forEach(word => {
       freq[word] = (freq[word] || 0) + 1;
     });
 
+    // ✅ Ordenar y mostrar top 10 (más relevantes)
     return Object.entries(freq)
       .map(([text, value]) => ({ text, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 15);
+      .slice(0, 10);
+  };
+
+  // ✅ Colores degradados (identidad GokuLab)
+  const getGradientColors = (count: number) => {
+    const colors = [
+      '#26AAA3', '#1D8A84', '#67A934', '#F8B50E', '#D61A1F',
+      '#E67E22', '#2C3E50', '#3498DB', '#9B59B6', '#1ABC9C'
+    ];
+    return colors.slice(0, count);
   };
 
   const chartOptions = {
@@ -86,33 +102,63 @@ const CommentsAnalysis: React.FC = () => {
       legend: {
         display: false,
       },
+      tooltip: {
+        callbacks: {
+          label: function(context: any) {
+            return `Frecuencia: ${context.raw}`;
+          }
+        }
+      }
     },
     scales: {
       x: {
         grid: {
           display: false,
         },
+        ticks: {
+          stepSize: 1,
+          font: {
+            size: 12,
+            weight: '500' as const,
+          }
+        }
       },
       y: {
         grid: {
           display: false,
         },
-      },
+        ticks: {
+          font: {
+            size: 13,
+            weight: '600' as const,
+          }
+        }
+      }
+    },
+    // ✅ Animaciones
+    animation: {
+      duration: 1500,
+      easing: 'easeInOutQuart' as const,
     },
   };
 
-  const createChartData = (words: Word[]) => ({
-    labels: words.map(w => w.text),
-    datasets: [
-      {
-        data: words.map(w => w.value),
-        backgroundColor: '#26AAA3',
-        borderColor: '#1D8A84',
-        borderWidth: 1,
-        borderRadius: 4,
-      },
-    ],
-  });
+  const createChartData = (words: Word[]) => {
+    const colors = getGradientColors(words.length);
+    return {
+      labels: words.map(w => w.text),
+      datasets: [
+        {
+          data: words.map(w => w.value),
+          backgroundColor: colors,
+          borderColor: colors.map(c => c),
+          borderWidth: 2,
+          borderRadius: 6,
+          barPercentage: 0.7,
+          categoryPercentage: 0.8,
+        },
+      ],
+    };
+  };
 
   if (loading) return <div className="comments-loading">Cargando comentarios...</div>;
   if (error) return <div className="comments-error">{error}</div>;
@@ -122,38 +168,41 @@ const CommentsAnalysis: React.FC = () => {
       <h2>💬 Análisis de Comentarios</h2>
       <p className="comments-subtitle">Palabras más frecuentes en las preguntas abiertas</p>
 
-      <div className="clouds-grid">
-        <div className="cloud-card">
-          <h3>¿Qué te gusta más de GokuLab?</h3>
-          <div style={{ height: '300px' }}>
+      <div className="charts-grid">
+        <div className="chart-card">
+          <h3>✨ ¿Qué te gusta más de GokuLab?</h3>
+          <div style={{ height: '350px' }}>
             {likesWords.length > 0 ? (
               <Bar data={createChartData(likesWords)} options={chartOptions} />
             ) : (
               <p className="no-data">No hay comentarios aún.</p>
             )}
           </div>
+          <p className="chart-footer">Top 10 palabras positivas</p>
         </div>
 
-        <div className="cloud-card">
-          <h3>¿Qué recomendarías mejorar?</h3>
-          <div style={{ height: '300px' }}>
+        <div className="chart-card">
+          <h3>⚡ ¿Qué recomendarías mejorar?</h3>
+          <div style={{ height: '350px' }}>
             {improvementsWords.length > 0 ? (
               <Bar data={createChartData(improvementsWords)} options={chartOptions} />
             ) : (
               <p className="no-data">No hay comentarios aún.</p>
             )}
           </div>
+          <p className="chart-footer">Top 10 palabras de mejora</p>
         </div>
 
-        <div className="cloud-card">
-          <h3>Comentarios adicionales</h3>
-          <div style={{ height: '300px' }}>
+        <div className="chart-card">
+          <h3>🌟 Comentarios adicionales</h3>
+          <div style={{ height: '350px' }}>
             {additionalWords.length > 0 ? (
               <Bar data={createChartData(additionalWords)} options={chartOptions} />
             ) : (
               <p className="no-data">No hay comentarios aún.</p>
             )}
           </div>
+          <p className="chart-footer">Top 10 palabras adicionales</p>
         </div>
       </div>
     </div>
